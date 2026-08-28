@@ -1,0 +1,257 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum MessageType {
+  TEXT
+  EMOJI
+  GIF
+  STICKER
+}
+
+enum NotificationType {
+  COMMENT
+  DM
+  SYSTEM
+  REPORT_UPDATE
+}
+
+enum ReportTargetType {
+  POST
+  COMMENT
+  USER
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email             String    @unique
+  passwordHash      String?   @map("password_hash")
+  firebaseUid       String?   @unique @map("firebase_uid")
+  authProvider      String?   @map("auth_provider")
+  username          String?   @unique
+  usernameLocked  Boolean   @default(false) @map("username_locked")
+  emailVerified   Boolean   @default(false) @map("email_verified")
+  onboardingDone  Boolean   @default(false) @map("onboarding_done")
+  avatarSeed      String    @default(cuid()) @map("avatar_seed")
+  role            UserRole  @default(USER)
+  bannedAt        DateTime? @map("banned_at")
+  banReason       String?   @map("ban_reason")
+  pushEnabled     Boolean   @default(true) @map("push_enabled")
+  dailyReminder   Boolean   @default(true) @map("daily_reminder")
+  fcmToken        String?   @map("fcm_token")
+  isBot           Boolean   @default(false) @map("is_bot")
+  region          String?   @map("region")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([isBot])
+
+  posts              Post[]
+  comments           Comment[]
+  saves              Save[]
+  blocksInitiated    Block[]        @relation("BlockInitiator")
+  blocksReceived     Block[]        @relation("BlockTarget")
+  sentMessages       DirectMessage[] @relation("MessageSender")
+  receivedMessages   DirectMessage[] @relation("MessageRecipient")
+  notifications      Notification[]
+  reportsFiled       Report[]       @relation("ReportReporter")
+  refreshTokens      RefreshToken[]
+  verificationCodes  VerificationCode[]
+
+  @@index([createdAt(sort: Desc)])
+  @@index([bannedAt])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model VerificationCode {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  code      String
+  purpose   String
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@map("verification_codes")
+}
+
+model Post {
+  id        String    @id @default(cuid())
+  authorId  String    @map("author_id")
+  content   String
+  hashtags  Json      @default("[]")
+  sourceUrl String?   @unique @map("source_url")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  author   User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  media    PostMedia[]
+  comments Comment[]
+  saves    Save[]
+  reports  Report[]    @relation("ReportPost")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([deletedAt])
+  @@map("posts")
+}
+
+model PostMedia {
+  id        String    @id @default(cuid())
+  postId    String    @map("post_id")
+  type      MediaType
+  url       String
+  sortOrder Int       @default(0) @map("sort_order")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, sortOrder])
+  @@map("post_media")
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  postId    String    @map("post_id")
+  authorId  String    @map("author_id")
+  content   String
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt(sort: Asc)])
+  @@index([authorId])
+  @@map("comments")
+}
+
+model Save {
+  userId    String   @map("user_id")
+  postId    String   @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("saves")
+}
+
+model Block {
+  blockerId String   @map("blocker_id")
+  blockedId String   @map("blocked_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blocker User @relation("BlockInitiator", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlockTarget", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockerId])
+  @@map("blocks")
+}
+
+model DirectMessage {
+  id          String      @id @default(cuid())
+  senderId    String      @map("sender_id")
+  recipientId String      @map("recipient_id")
+  type        MessageType @default(TEXT)
+  content     String
+  readAt      DateTime?   @map("read_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  sender    User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, recipientId, createdAt(sort: Desc)])
+  @@index([recipientId, readAt])
+  @@map("direct_messages")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  body      String
+  route     String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model Report {
+  id           String           @id @default(cuid())
+  reporterId   String           @map("reporter_id")
+  targetType   ReportTargetType @map("target_type")
+  targetPostId String?          @map("target_post_id")
+  targetUserId String?          @map("target_user_id")
+  targetCommentId String?       @map("target_comment_id")
+  reason       String
+  status       ReportStatus     @default(PENDING)
+  adminNote    String?          @map("admin_note")
+  resolvedAt   DateTime?        @map("resolved_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  reporter   User  @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetPost Post? @relation("ReportPost", fields: [targetPostId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([targetType])
+  @@map("reports")
+}
+
+/// Denormalized hashtag counts for fast trending — updated via background job
+model HashtagStat {
+  tag       String   @id
+  postCount Int      @default(0) @map("post_count")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([postCount(sort: Desc)])
+  @@map("hashtag_stats")
+}

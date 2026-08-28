@@ -1,0 +1,41 @@
+# Secrets — never commit
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example
+!**/.env.local.example
+**/serviceAccount*.json
+**/firebase-adminsdk*.json
+
+# Dependencies
+**/node_modules/
+
+# Build output
+**/dist/
+**/build/
+**/.dart_tool/
+**/.next/
+**/coverage/
+
+# Runtime / uploads
+**/uploads/
+**/logs/
+tmp/
+*.db
+
+# Old duplicate folder (if still present)
+sameho_flutter/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flutter ephemeral (regenerated)
+**/ios/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/

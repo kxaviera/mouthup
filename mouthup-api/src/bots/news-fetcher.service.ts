@@ -5,14 +5,26 @@ import { localeForSlug } from './news-gl-codes';
 import { MAX_POST_WORDS } from '../common/utils/post-text.util';
 
 export type NewsTopic =
+  | 'NEWS'
+  | 'POLITICS'
   | 'WORLD'
-  | 'NATION'
   | 'BUSINESS'
   | 'TECHNOLOGY'
-  | 'ENTERTAINMENT'
   | 'SCIENCE'
+  | 'HEALTH'
   | 'SPORTS'
-  | 'HEALTH';
+  | 'ENTERTAINMENT'
+  | 'BOLLYWOOD'
+  | 'HOLLYWOOD'
+  | 'MUSIC'
+  | 'GAMING'
+  | 'FASHION'
+  | 'FOOD'
+  | 'TRAVEL'
+  | 'CRIME'
+  | 'EDUCATION'
+  | 'CLIMATE'
+  | 'CRYPTO';
 
 export interface RealNewsItem {
   title: string;
@@ -22,26 +34,51 @@ export interface RealNewsItem {
   topic: NewsTopic;
 }
 
-const TOPICS: NewsTopic[] = [
+/** Every bot rotates through the full topic list — no regional restrictions. */
+const ALL_TOPICS: NewsTopic[] = [
+  'NEWS',
+  'POLITICS',
   'WORLD',
-  'NATION',
   'BUSINESS',
   'TECHNOLOGY',
-  'ENTERTAINMENT',
   'SCIENCE',
-  'SPORTS',
   'HEALTH',
+  'SPORTS',
+  'ENTERTAINMENT',
+  'BOLLYWOOD',
+  'HOLLYWOOD',
+  'MUSIC',
+  'GAMING',
+  'FASHION',
+  'FOOD',
+  'TRAVEL',
+  'CRIME',
+  'EDUCATION',
+  'CLIMATE',
+  'CRYPTO',
 ];
 
 const TOPIC_TAGS: Record<NewsTopic, string[]> = {
+  NEWS: ['#news', '#latest'],
+  POLITICS: ['#politics', '#government'],
   WORLD: ['#world', '#breaking'],
-  NATION: ['#politics', '#news'],
   BUSINESS: ['#business', '#markets'],
   TECHNOLOGY: ['#tech', '#innovation'],
-  ENTERTAINMENT: ['#entertainment', '#viral'],
   SCIENCE: ['#science', '#discovery'],
-  SPORTS: ['#sports', '#live'],
   HEALTH: ['#health', '#wellness'],
+  SPORTS: ['#sports', '#live'],
+  ENTERTAINMENT: ['#entertainment', '#viral'],
+  BOLLYWOOD: ['#bollywood', '#entertainment'],
+  HOLLYWOOD: ['#hollywood', '#movies'],
+  MUSIC: ['#music', '#entertainment'],
+  GAMING: ['#gaming', '#esports'],
+  FASHION: ['#fashion', '#style'],
+  FOOD: ['#food', '#recipes'],
+  TRAVEL: ['#travel', '#tourism'],
+  CRIME: ['#crime', '#law'],
+  EDUCATION: ['#education', '#schools'],
+  CLIMATE: ['#climate', '#environment'],
+  CRYPTO: ['#crypto', '#finance'],
 };
 
 @Injectable()
@@ -54,34 +91,65 @@ export class NewsFetcherService {
     },
   });
 
-  private topicIndex = 0;
+  private readonly botTopicIndex = new Map<string, number>();
 
-  nextTopic(): NewsTopic {
-    const topic = TOPICS[this.topicIndex % TOPICS.length];
-    this.topicIndex++;
+  /** Full topic rotation — same list for every bot worldwide. */
+  allTopics(): NewsTopic[] {
+    return ALL_TOPICS;
+  }
+
+  nextTopicForBot(botId: string): NewsTopic {
+    const idx = this.botTopicIndex.get(botId) ?? 0;
+    const topic = ALL_TOPICS[idx % ALL_TOPICS.length];
+    this.botTopicIndex.set(botId, idx + 1);
     return topic;
   }
 
   buildFeedUrl(region: BotRegion, topic: NewsTopic): string {
     const { gl, hl } = localeForSlug(region.slug, region.country);
     const ceid = `${gl}:${hl.split('-')[0]}`;
-
-    if (region.country === 'USA') {
-      const q = encodeURIComponent(`${region.name} news when:1d`);
-      return `https://news.google.com/rss/search?q=${q}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
-    }
-
-    const topicPath = topic === 'NATION' ? 'WORLD' : topic;
-    return `https://news.google.com/rss/headlines/section/topic/${topicPath}?hl=${hl}&gl=${gl}&ceid=${ceid}`;
+    const q = encodeURIComponent(this.searchQuery(region, topic));
+    return `https://news.google.com/rss/search?q=${q}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
   }
 
-  async fetchForRegion(region: BotRegion, topic?: NewsTopic): Promise<RealNewsItem | null> {
-    const chosenTopic = topic ?? this.nextTopic();
+  private searchQuery(region: BotRegion, topic: NewsTopic): string {
+    const place = region.name;
+    const queries: Record<NewsTopic, string> = {
+      NEWS: `${place} news when:1d`,
+      POLITICS: `${place} politics when:2d`,
+      WORLD: `${place} world news when:2d`,
+      BUSINESS: `${place} business economy when:2d`,
+      TECHNOLOGY: `${place} technology when:2d`,
+      SCIENCE: `${place} science when:2d`,
+      HEALTH: `${place} health when:2d`,
+      SPORTS: `${place} sports when:2d`,
+      ENTERTAINMENT: `${place} entertainment celebrity when:2d`,
+      BOLLYWOOD: `${place} Bollywood when:2d`,
+      HOLLYWOOD: `${place} Hollywood movies when:2d`,
+      MUSIC: `${place} music when:2d`,
+      GAMING: `${place} gaming esports when:2d`,
+      FASHION: `${place} fashion when:2d`,
+      FOOD: `${place} food restaurant when:2d`,
+      TRAVEL: `${place} travel tourism when:2d`,
+      CRIME: `${place} crime when:2d`,
+      EDUCATION: `${place} education schools when:2d`,
+      CLIMATE: `${place} climate environment when:2d`,
+      CRYPTO: `${place} cryptocurrency bitcoin when:2d`,
+    };
+    return queries[topic];
+  }
+
+  async fetchForRegion(
+    region: BotRegion,
+    topic: NewsTopic,
+    botId?: string,
+  ): Promise<RealNewsItem | null> {
+    const chosenTopic = topic;
     const feedUrl = this.buildFeedUrl(region, chosenTopic);
 
     try {
       const feed = await this.parser.parseURL(feedUrl);
-      const items = (feed.items ?? []).slice(0, 12);
+      const items = (feed.items ?? []).slice(0, 15);
       if (items.length === 0) return null;
 
       for (const item of items) {
@@ -91,7 +159,7 @@ export class NewsFetcherService {
       }
       return null;
     } catch (err) {
-      this.logger.warn(`RSS fetch failed for ${region.name}: ${err instanceof Error ? err.message : err}`);
+      this.logger.warn(`RSS fetch failed for ${region.name} [${chosenTopic}]: ${err instanceof Error ? err.message : err}`);
       return null;
     }
   }
@@ -118,22 +186,89 @@ export class NewsFetcherService {
 
     const regionTag = `#${region.name.replace(/\s+/g, '')}`;
     const tags = [...TOPIC_TAGS[topic], regionTag, '#latest'].join(' ');
-    let content = snippet ? `${title}\n\n${snippet}` : title;
+    let content = this.composePostBody(title, snippet);
     content = `${content}\n\n${tags}`;
     content = this.trimWords(content, MAX_POST_WORDS);
 
-    const imageUrl = this.extractImageFromItem(item) ?? (await this.fetchOgImage(link));
-    const media: RealNewsItem['media'] = imageUrl
-      ? [{ type: 'IMAGE', url: imageUrl }]
-      : [];
+    const media = await this.extractMedia(item, link);
 
     return { title, content, sourceUrl: link, media, topic };
   }
 
-  private async fetchOgImage(pageUrl: string): Promise<string | null> {
+  private async extractMedia(
+    item: Parser.Item,
+    pageUrl: string,
+  ): Promise<RealNewsItem['media']> {
+    const media: RealNewsItem['media'] = [];
+    const seen = new Set<string>();
+
+    const push = (type: 'IMAGE' | 'VIDEO', url: string | null | undefined) => {
+      if (!url || !url.startsWith('http') || seen.has(url)) return;
+      seen.add(url);
+      media.push({ type, url });
+    };
+
+    const fromItem = this.extractMediaFromItem(item);
+    for (const m of fromItem) push(m.type, m.url);
+
+    const pageMedia = await this.fetchPageMedia(pageUrl);
+    if (pageMedia.video) push('VIDEO', pageMedia.video);
+    if (pageMedia.image) push('IMAGE', pageMedia.image);
+
+    const html = item.content ?? item.summary ?? '';
+    const ytId = this.extractYoutubeId(html) ?? this.extractYoutubeId(pageUrl);
+    if (ytId) {
+      push('IMAGE', `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`);
+    }
+
+    return media.slice(0, 4);
+  }
+
+  private extractMediaFromItem(item: Parser.Item): RealNewsItem['media'] {
+    const out: RealNewsItem['media'] = [];
+
+    const enclosure = item.enclosure;
+    if (enclosure?.url) {
+      if (enclosure.type?.startsWith('video/') && this.isPlayableVideoUrl(enclosure.url)) {
+        out.push({ type: 'VIDEO', url: enclosure.url });
+      } else if (enclosure.type?.startsWith('image/')) {
+        out.push({ type: 'IMAGE', url: enclosure.url });
+      }
+    }
+
+    const mediaContent = (item as Record<string, unknown>)['media:content'] as
+      | { $?: { url?: string; type?: string; medium?: string } }
+      | undefined;
+    const mc = mediaContent?.$;
+    if (mc?.url) {
+      if (mc.type?.startsWith('video/') || mc.medium === 'video') {
+        if (this.isPlayableVideoUrl(mc.url)) out.push({ type: 'VIDEO', url: mc.url });
+      } else if (mc.type?.startsWith('image/') || mc.medium === 'image') {
+        out.push({ type: 'IMAGE', url: mc.url });
+      }
+    }
+
+    const mediaThumb = (item as Record<string, unknown>)['media:thumbnail'] as
+      | { $?: { url?: string } }
+      | undefined;
+    if (mediaThumb?.$?.url) out.push({ type: 'IMAGE', url: mediaThumb.$.url });
+
+    const html = item.content ?? item.summary ?? '';
+    const imgMatch = html.match(/src=["']([^"']+\.(?:jpg|jpeg|png|webp|gif)[^"']*)["']/i);
+    if (imgMatch?.[1]) out.push({ type: 'IMAGE', url: imgMatch[1] });
+
+    const videoMatch = html.match(/src=["']([^"']+\.(?:mp4|webm|m3u8)[^"']*)["']/i);
+    if (videoMatch?.[1] && this.isPlayableVideoUrl(videoMatch[1])) {
+      out.push({ type: 'VIDEO', url: videoMatch[1] });
+    }
+
+    return out;
+  }
+
+  private async fetchPageMedia(pageUrl: string): Promise<{ image?: string; video?: string }> {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000);
+      const timeout = setTimeout(() => controller.abort(), 7000);
       const res = await fetch(pageUrl, {
         signal: controller.signal,
         redirect: 'follow',
@@ -143,44 +278,98 @@ export class NewsFetcherService {
         },
       });
       clearTimeout(timeout);
-      if (!res.ok) return null;
-      const html = (await res.text()).slice(0, 50_000);
-      const patterns = [
+      if (!res.ok) return {};
+      const html = (await res.text()).slice(0, 80_000);
+
+      const imagePatterns = [
         /property=["']og:image(?::url)?["'][^>]*content=["']([^"']+)["']/i,
         /content=["']([^"']+)["'][^>]*property=["']og:image(?::url)?["']/i,
-        /name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i,
+        /name=["']twitter:image(?::src)?["'][^>]*content=["']([^"']+)["']/i,
       ];
-      for (const re of patterns) {
+      const videoPatterns = [
+        /property=["']og:video(?::url)?["'][^>]*content=["']([^"']+)["']/i,
+        /content=["']([^"']+)["'][^>]*property=["']og:video(?::url)?["']/i,
+        /property=["']og:video:secure_url["'][^>]*content=["']([^"']+)["']/i,
+      ];
+
+      let image: string | undefined;
+      for (const re of imagePatterns) {
         const m = html.match(re);
-        if (m?.[1]?.startsWith('http')) return m[1];
+        if (m?.[1]?.startsWith('http')) {
+          image = m[1];
+          break;
+        }
       }
-      return null;
+
+      let video: string | undefined;
+      for (const re of videoPatterns) {
+        const m = html.match(re);
+        if (m?.[1]?.startsWith('http') && this.isPlayableVideoUrl(m[1])) {
+          video = m[1];
+          break;
+        }
+      }
+
+      if (!video) {
+        const mp4 = html.match(/https?:\/\/[^"'\s]+\.mp4[^"'\s]*/i);
+        if (mp4?.[0] && this.isPlayableVideoUrl(mp4[0])) video = mp4[0];
+      }
+
+      return { image, video };
     } catch {
-      return null;
+      return {};
     }
   }
 
-  private extractImageFromItem(item: Parser.Item): string | null {
-    const enclosure = item.enclosure;
-    if (enclosure?.url && enclosure.type?.startsWith('image/')) {
-      return enclosure.url;
+  private isPlayableVideoUrl(url: string): boolean {
+    if (!url.startsWith('http')) return false;
+    if (/youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|facebook\.com\/watch/i.test(url)) {
+      return false;
+    }
+    return /\.(mp4|webm|m3u8|mov)(\?|$)/i.test(url) || /\/video\/|video\.|\.mp4/i.test(url);
+  }
+
+  private extractYoutubeId(text: string): string | null {
+    const patterns = [
+      /youtube\.com\/watch\?v=([\w-]{11})/i,
+      /youtu\.be\/([\w-]{11})/i,
+      /youtube\.com\/embed\/([\w-]{11})/i,
+    ];
+    for (const re of patterns) {
+      const m = text.match(re);
+      if (m?.[1]) return m[1];
+    }
+    return null;
+  }
+
+  private composePostBody(title: string, snippet: string): string {
+    if (!snippet) return title;
+
+    const titleKey = this.normalizeForCompare(title);
+    const snippetKey = this.normalizeForCompare(snippet);
+    if (snippetKey === titleKey) return title;
+
+    const titleWithoutSource = title.replace(/\s[-–—|]\s[^-–—|]+$/, '').trim();
+    if (this.normalizeForCompare(titleWithoutSource) === snippetKey) return title;
+
+    if (
+      snippetKey.startsWith(titleKey) ||
+      titleKey.startsWith(snippetKey) ||
+      snippetKey.includes(titleKey) ||
+      titleKey.includes(snippetKey)
+    ) {
+      return title.length >= snippet.length ? title : snippet;
     }
 
-    const mediaContent = (item as Record<string, unknown>)['media:content'] as
-      | { $?: { url?: string; type?: string } }
-      | undefined;
-    if (mediaContent?.$?.url && mediaContent.$?.type?.startsWith('image/')) {
-      return mediaContent.$.url;
-    }
+    return `${title}\n\n${snippet}`;
+  }
 
-    const mediaThumb = (item as Record<string, unknown>)['media:thumbnail'] as
-      | { $?: { url?: string } }
-      | undefined;
-    if (mediaThumb?.$?.url) return mediaThumb.$.url;
-
-    const html = item.content ?? item.summary ?? '';
-    const match = html.match(/src=["']([^"']+\.(?:jpg|jpeg|png|webp|gif)[^"']*)["']/i);
-    return match?.[1] ?? null;
+  private normalizeForCompare(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   private cleanText(text: string): string {

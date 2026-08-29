@@ -25,7 +25,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
     ),
     (
       '5. What we do not do',
-      'We do not sell your personal data. We do not show ads based on your private messages. We do not publicly display your email or signup IP to other users.',
+      'We do not sell your personal data. We do not show ads based on your private messages. We do not publicly display your email or signup IP to other users. We do not rank posts with hidden engagement algorithms — the feed is organic and chronological.',
     ),
     (
       '6. Content moderation',

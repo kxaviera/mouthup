@@ -7,6 +7,7 @@ import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/post_text.dart';
 import '../../widgets/post_content_text.dart';
+import '../../widgets/post_translate_link.dart';
 import '../../widgets/post_video_player.dart';
 import '../../widgets/user_avatar.dart';
 
@@ -91,6 +92,7 @@ class PostTile extends StatelessWidget {
                           previewWords: previewWords,
                           onHashtagTap: onHashtagTap,
                         ),
+                        PostTranslateLink(content: post.content),
                         if (localImages.isNotEmpty || post.imageUrls.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           _imageGallery(localImages),

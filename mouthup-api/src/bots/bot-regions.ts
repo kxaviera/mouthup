@@ -1,3 +1,5 @@
+import { BOT_SUBDIVISIONS } from './bot-regions-subdivisions';
+
 export interface BotRegion {
   slug: string;
   name: string;
@@ -5,7 +7,7 @@ export interface BotRegion {
   country: string;
 }
 
-/** 50 US states + 60 countries = 110 regional news bot accounts */
+/** US states + countries + major state/province bots worldwide */
 export const BOT_REGIONS: BotRegion[] = [
   // US states
   { slug: 'alabama', name: 'Alabama', username: 'AlabamaPulse', country: 'USA' },
@@ -119,4 +121,5 @@ export const BOT_REGIONS: BotRegion[] = [
   { slug: 'ukraine', name: 'Ukraine', username: 'KyivKey', country: 'Ukraine' },
   { slug: 'hong-kong', name: 'Hong Kong', username: 'HKHeadlines', country: 'China' },
   { slug: 'vietnam', name: 'Vietnam', username: 'HanoiHype', country: 'Vietnam' },
+  ...BOT_SUBDIVISIONS,
 ];

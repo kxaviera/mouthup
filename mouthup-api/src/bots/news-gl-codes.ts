@@ -62,7 +62,15 @@ export const NEWS_LOCALE: Record<string, { gl: string; hl: string }> = {
 
 export const US_LOCALE = { gl: 'US', hl: 'en-US' };
 
+const COUNTRY_LOCALE: Record<string, { gl: string; hl: string }> = {
+  India: { gl: 'IN', hl: 'en-IN' },
+  Canada: { gl: 'CA', hl: 'en-CA' },
+  Australia: { gl: 'AU', hl: 'en-AU' },
+  UK: { gl: 'GB', hl: 'en-GB' },
+};
+
 export function localeForSlug(slug: string, country: string) {
   if (country === 'USA') return US_LOCALE;
+  if (COUNTRY_LOCALE[country]) return COUNTRY_LOCALE[country];
   return NEWS_LOCALE[slug] ?? { gl: 'US', hl: 'en-US' };
 }

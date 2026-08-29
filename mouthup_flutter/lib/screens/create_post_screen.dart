@@ -32,7 +32,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final _picker = ImagePicker();
   final List<_PostAttachment> _attachments = [];
   bool _publishing = false;
-  bool _acceptedTerms = false;
+  bool _acceptedTerms = true;
 
   static const _maxAttachments = 4;
 
@@ -108,7 +108,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       return;
     }
 
-    if (mounted) popOrGo(context, '/home');
+    await app.refreshFeed();
+    if (mounted) context.go('/home');
   }
 
   bool get _canPublish => _acceptedTerms && (_content.text.trim().isNotEmpty || _attachments.isNotEmpty);

@@ -24,11 +24,31 @@ dependencies:
   google_sign_in: ^6.3.0
   flutter_local_notifications: ^18.0.1
   video_player: ^2.10.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/mouthup_icon.png
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: assets/images/mouthup_icon.png
+  web:
+    generate: true
+    image_path: assets/images/mouthup_icon.png
+    background_color: "#000000"
+    theme_color: "#000000"
+  windows:
+    generate: true
+    image_path: assets/images/mouthup_icon.png
+  macos:
+    generate: true
+    image_path: assets/images/mouthup_icon.png
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

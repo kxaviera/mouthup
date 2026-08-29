@@ -126,8 +126,8 @@ export class BotPostingService implements OnModuleInit, OnModuleDestroy {
       return false;
     }
 
-    const topic = this.news.nextTopic();
-    const item = await this.news.fetchForRegion(region, topic);
+    const topic = this.news.nextTopicForBot(bot.id);
+    const item = await this.news.fetchForRegion(region, topic, bot.id);
     if (!item) return false;
 
     const exists = await this.prisma.post.findUnique({
@@ -138,7 +138,7 @@ export class BotPostingService implements OnModuleInit, OnModuleDestroy {
 
     try {
       await this.posts.create(bot.id, item.content, item.media, item.sourceUrl);
-      this.logger.log(`Posted [${region.name}] ${item.title.slice(0, 60)}…`);
+      this.logger.log(`Posted [${region.name}/${item.topic}] ${item.title.slice(0, 50)}… (${item.media.length} media)`);
       return true;
     } catch (err) {
       this.logger.error(`Post failed for ${bot.username}: ${err instanceof Error ? err.message : err}`);

@@ -10,11 +10,14 @@ class SafetyScreen extends StatelessWidget {
   const SafetyScreen({super.key});
 
   static const _rules = [
-    (Icons.visibility_off_outlined, 'Fully anonymous — unique username'),
-    (Icons.chat_bubble_outline, 'Share anything — politics, opinions, rants'),
+    (Icons.visibility_off_outlined, 'Fully anonymous — unique username, no real name required'),
+    (Icons.groups_outlined, 'Everyone is equal — no follower counts, no likes, no view counts'),
+    (Icons.eco_outlined, '100% organic feed — chronological posts, no secret algorithm or ranking games'),
+    (Icons.spa_outlined, 'No pressure — post without chasing numbers or competing for attention'),
+    (Icons.chat_bubble_outline, 'Share anything — news, politics, opinions, entertainment'),
     (Icons.mail_outline, 'Direct messages only — no group chat'),
     (Icons.block, 'No pornographic content'),
-    (Icons.favorite_outline, 'Peer support — not medical advice'),
+    (Icons.favorite_outline, 'Peer support — not medical or legal advice'),
     (Icons.description_outlined, 'By continuing you agree to our Terms & Conditions'),
   ];
 
@@ -29,7 +32,10 @@ class SafetyScreen extends StatelessWidget {
           const SizedBox(height: 8),
           const Text('Safe space rules', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.text)),
           const SizedBox(height: 8),
-          const Text('MouthUp is your judgment-free space', style: TextStyle(color: AppColors.textMuted)),
+          const Text(
+            'MouthUp is calm, equal, and judgment-free — no influencer headache.',
+            style: TextStyle(color: AppColors.textMuted),
+          ),
           const SizedBox(height: 24),
           Expanded(
             child: ListView.separated(
@@ -55,7 +61,16 @@ class SafetyScreen extends StatelessWidget {
                           child: Icon(icon, color: AppColors.primary, size: 22),
                         ),
                         const SizedBox(width: 14),
-                        Expanded(child: Text(text, style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: isTerms ? FontWeight.w600 : FontWeight.w400))),
+                        Expanded(
+                          child: Text(
+                            text,
+                            style: TextStyle(
+                              color: AppColors.text,
+                              fontSize: 15,
+                              fontWeight: isTerms ? FontWeight.w600 : FontWeight.w400,
+                            ),
+                          ),
+                        ),
                         if (isTerms) const Icon(Icons.chevron_right, color: AppColors.textDim, size: 20),
                       ],
                     ),

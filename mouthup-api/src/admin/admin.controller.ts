@@ -69,7 +69,7 @@ export class AdminController {
   }
 
   @Get('posts')
-  searchPosts(@Query('q') q: string, @Query('limit') limit?: string) {
-    return this.admin.searchPosts(q ?? '', limit ? Number(limit) : 100);
+  searchPosts(@Query('q') q: string) {
+    return this.admin.searchPosts(q ?? '');
   }
 }

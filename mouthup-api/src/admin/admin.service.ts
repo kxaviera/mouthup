@@ -78,16 +78,20 @@ export class AdminService {
     });
   }
 
-  searchPosts(q: string, limit = 20) {
+  searchPosts(q: string, limit = 100) {
+    const trimmed = q.trim();
     return this.prisma.post.findMany({
-      where: {
-        deletedAt: null,
-        content: { contains: q, mode: 'insensitive' },
-      },
+      where: trimmed
+        ? {
+            deletedAt: null,
+            content: { contains: trimmed, mode: 'insensitive' },
+          }
+        : { deletedAt: null },
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
-        author: { select: { username: true } },
+        author: { select: { username: true, email: true, isBot: true } },
+        media: { select: { type: true, url: true }, orderBy: { sortOrder: 'asc' }, take: 3 },
       },
     });
   }

@@ -142,10 +142,16 @@ export async function unbanUser(id: string) {
   return apiFetch(`/admin/users/${id}/unban`, { method: 'PATCH' });
 }
 
-export async function searchPosts(q: string) {
+export async function searchPosts(q: string, limit = 100) {
   return apiFetch<
-    { id: string; content: string; createdAt: string; author: { username: string | null } }[]
-  >(`/admin/posts?q=${encodeURIComponent(q)}`);
+    {
+      id: string;
+      content: string;
+      createdAt: string;
+      author: { username: string | null; email: string; isBot: boolean };
+      media: { type: string; url: string }[];
+    }[]
+  >(`/admin/posts?q=${encodeURIComponent(q)}&limit=${limit}`);
 }
 
 export async function deletePost(id: string) {

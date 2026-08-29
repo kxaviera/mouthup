@@ -54,6 +54,7 @@ export async function apiFetch<T>(
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...options,
+      cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Patch,
   Query,
@@ -69,6 +70,7 @@ export class AdminController {
   }
 
   @Get('posts')
+  @Header('Cache-Control', 'no-store')
   searchPosts(@Query('q') q?: string, @Query('limit') limit?: string) {
     const parsed = limit ? Number(limit) : 100;
     const safeLimit = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 500) : 100;

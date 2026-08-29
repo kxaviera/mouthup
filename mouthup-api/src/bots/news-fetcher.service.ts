@@ -89,6 +89,12 @@ export class NewsFetcherService {
     headers: {
       'User-Agent': 'MouthUpBot/1.0 (news aggregator; +https://mouthup.app)',
     },
+    customFields: {
+      item: [
+        ['media:content', 'mediaContents', { keepArray: true }],
+        ['media:thumbnail', 'mediaThumbnails', { keepArray: true }],
+      ],
+    },
   });
 
   private readonly botTopicIndex = new Map<string, number>();
@@ -122,15 +128,15 @@ export class NewsFetcherService {
       TECHNOLOGY: `${place} technology when:2d`,
       SCIENCE: `${place} science when:2d`,
       HEALTH: `${place} health when:2d`,
-      SPORTS: `${place} sports when:2d`,
-      ENTERTAINMENT: `${place} entertainment celebrity when:2d`,
-      BOLLYWOOD: `${place} Bollywood when:2d`,
-      HOLLYWOOD: `${place} Hollywood movies when:2d`,
-      MUSIC: `${place} music when:2d`,
-      GAMING: `${place} gaming esports when:2d`,
-      FASHION: `${place} fashion when:2d`,
-      FOOD: `${place} food restaurant when:2d`,
-      TRAVEL: `${place} travel tourism when:2d`,
+      SPORTS: `${place} sports highlights video when:2d`,
+      ENTERTAINMENT: `${place} entertainment viral video when:2d`,
+      BOLLYWOOD: `${place} Bollywood photos when:2d`,
+      HOLLYWOOD: `${place} Hollywood movies trailer when:2d`,
+      MUSIC: `${place} music video when:2d`,
+      GAMING: `${place} gaming trailer gameplay when:2d`,
+      FASHION: `${place} fashion photos when:2d`,
+      FOOD: `${place} food photos when:2d`,
+      TRAVEL: `${place} travel photos when:2d`,
       CRIME: `${place} crime when:2d`,
       EDUCATION: `${place} education schools when:2d`,
       CLIMATE: `${place} climate environment when:2d`,
@@ -152,7 +158,27 @@ export class NewsFetcherService {
       const items = (feed.items ?? []).slice(0, 15);
       if (items.length === 0) return null;
 
+      // Prefer RSS items that already carry thumbnails (fast path).
       for (const item of items) {
+        if (!item.title || !item.link) continue;
+        if (this.extractMediaFromItem(item).length === 0) continue;
+        const parsed = await this.buildNewsItem(item, region, chosenTopic);
+        if (parsed?.media.length) return parsed;
+      }
+
+      // Fetch article pages for a few candidates to pull og:image / video.
+      const mediaCandidates: RealNewsItem[] = [];
+      for (const item of items.slice(0, 6)) {
+        if (!item.title || !item.link) continue;
+        const parsed = await this.buildNewsItem(item, region, chosenTopic);
+        if (parsed?.media.length) mediaCandidates.push(parsed);
+      }
+      if (mediaCandidates.length > 0) {
+        return mediaCandidates[Math.floor(Math.random() * mediaCandidates.length)];
+      }
+
+      // Last resort: text-only post from the newest item.
+      for (const item of items.slice(0, 3)) {
         if (!item.title || !item.link) continue;
         const parsed = await this.buildNewsItem(item, region, chosenTopic);
         if (parsed) return parsed;
@@ -190,7 +216,7 @@ export class NewsFetcherService {
     content = `${content}\n\n${tags}`;
     content = this.trimWords(content, MAX_POST_WORDS);
 
-    const media = await this.extractMedia(item, link);
+    const media = await this.extractMedia(item, link, title);
 
     return { title, content, sourceUrl: link, media, topic };
   }
@@ -198,6 +224,7 @@ export class NewsFetcherService {
   private async extractMedia(
     item: Parser.Item,
     pageUrl: string,
+    title: string,
   ): Promise<RealNewsItem['media']> {
     const media: RealNewsItem['media'] = [];
     const seen = new Set<string>();
@@ -218,51 +245,130 @@ export class NewsFetcherService {
     const html = item.content ?? item.summary ?? '';
     const ytId = this.extractYoutubeId(html) ?? this.extractYoutubeId(pageUrl);
     if (ytId) {
+      push('VIDEO', `https://www.youtube.com/watch?v=${ytId}`);
       push('IMAGE', `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`);
+    }
+
+    if (media.length === 0) {
+      const wikiImage = await this.fetchWikiThumbnail(title);
+      if (wikiImage) push('IMAGE', wikiImage);
     }
 
     return media.slice(0, 4);
   }
 
+  private async fetchWikiThumbnail(title: string): Promise<string | undefined> {
+    const slug = title
+      .replace(/\s[-–—|]\s[^-–—|]+$/, '')
+      .trim()
+      .replace(/\s+/g, '_');
+    if (!slug) return undefined;
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`,
+        {
+          signal: controller.signal,
+          headers: { Accept: 'application/json', 'User-Agent': 'MouthUpBot/1.0' },
+        },
+      );
+      clearTimeout(timeout);
+      if (!res.ok) return undefined;
+      const data = (await res.json()) as { thumbnail?: { source?: string } };
+      const url = data.thumbnail?.source;
+      return url?.startsWith('http') ? url : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   private extractMediaFromItem(item: Parser.Item): RealNewsItem['media'] {
     const out: RealNewsItem['media'] = [];
+    const seen = new Set<string>();
+    const push = (type: 'IMAGE' | 'VIDEO', url: string | null | undefined) => {
+      if (!url || !url.startsWith('http') || seen.has(url) || !this.isLikelyArticleImage(url)) return;
+      seen.add(url);
+      out.push({ type, url });
+    };
 
     const enclosure = item.enclosure;
     if (enclosure?.url) {
       if (enclosure.type?.startsWith('video/') && this.isPlayableVideoUrl(enclosure.url)) {
-        out.push({ type: 'VIDEO', url: enclosure.url });
+        push('VIDEO', enclosure.url);
       } else if (enclosure.type?.startsWith('image/')) {
-        out.push({ type: 'IMAGE', url: enclosure.url });
+        push('IMAGE', enclosure.url);
       }
     }
 
-    const mediaContent = (item as Record<string, unknown>)['media:content'] as
+    const raw = item as Record<string, unknown>;
+    const mediaContents = raw['mediaContents'] as
+      | { $?: { url?: string; type?: string; medium?: string } }[]
+      | undefined;
+    if (Array.isArray(mediaContents)) {
+      for (const entry of mediaContents) {
+        const mc = entry?.$;
+        if (!mc?.url) continue;
+        if (mc.type?.startsWith('video/') || mc.medium === 'video') {
+          if (this.isPlayableVideoUrl(mc.url) || this.extractYoutubeId(mc.url)) {
+            push('VIDEO', mc.url);
+          }
+        } else if (mc.type?.startsWith('image/') || mc.medium === 'image') {
+          push('IMAGE', mc.url);
+        }
+      }
+    }
+
+    const mediaThumbnails = raw['mediaThumbnails'] as { $?: { url?: string } }[] | undefined;
+    if (Array.isArray(mediaThumbnails)) {
+      for (const entry of mediaThumbnails) {
+        push('IMAGE', entry?.$?.url);
+      }
+    }
+
+    const mediaContent = raw['media:content'] as
       | { $?: { url?: string; type?: string; medium?: string } }
       | undefined;
     const mc = mediaContent?.$;
     if (mc?.url) {
       if (mc.type?.startsWith('video/') || mc.medium === 'video') {
-        if (this.isPlayableVideoUrl(mc.url)) out.push({ type: 'VIDEO', url: mc.url });
+        if (this.isPlayableVideoUrl(mc.url) || this.extractYoutubeId(mc.url)) {
+          push('VIDEO', mc.url);
+        }
       } else if (mc.type?.startsWith('image/') || mc.medium === 'image') {
-        out.push({ type: 'IMAGE', url: mc.url });
+        push('IMAGE', mc.url);
       }
     }
 
-    const mediaThumb = (item as Record<string, unknown>)['media:thumbnail'] as
-      | { $?: { url?: string } }
-      | undefined;
-    if (mediaThumb?.$?.url) out.push({ type: 'IMAGE', url: mediaThumb.$.url });
+    const mediaThumb = raw['media:thumbnail'] as { $?: { url?: string } } | undefined;
+    if (mediaThumb?.$?.url) push('IMAGE', mediaThumb.$.url);
 
-    const html = item.content ?? item.summary ?? '';
+    const html = item.content ?? item.summary ?? item.contentSnippet ?? '';
+    for (const match of html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)) {
+      push('IMAGE', match[1]);
+    }
+
     const imgMatch = html.match(/src=["']([^"']+\.(?:jpg|jpeg|png|webp|gif)[^"']*)["']/i);
-    if (imgMatch?.[1]) out.push({ type: 'IMAGE', url: imgMatch[1] });
+    if (imgMatch?.[1]) push('IMAGE', imgMatch[1]);
 
     const videoMatch = html.match(/src=["']([^"']+\.(?:mp4|webm|m3u8)[^"']*)["']/i);
     if (videoMatch?.[1] && this.isPlayableVideoUrl(videoMatch[1])) {
-      out.push({ type: 'VIDEO', url: videoMatch[1] });
+      push('VIDEO', videoMatch[1]);
+    }
+
+    const ytId = this.extractYoutubeId(html);
+    if (ytId) {
+      push('VIDEO', `https://www.youtube.com/watch?v=${ytId}`);
+      push('IMAGE', `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`);
     }
 
     return out;
+  }
+
+  private isLikelyArticleImage(url: string): boolean {
+    if (/logo|icon|favicon|pixel|1x1|avatar|badge|spacer|tracking/i.test(url)) return false;
+    return true;
   }
 
   private async fetchPageMedia(pageUrl: string): Promise<{ image?: string; video?: string }> {
@@ -279,12 +385,15 @@ export class NewsFetcherService {
       });
       clearTimeout(timeout);
       if (!res.ok) return {};
-      const html = (await res.text()).slice(0, 80_000);
+      const html = (await res.text()).slice(0, 120_000);
 
       const imagePatterns = [
         /property=["']og:image(?::url)?["'][^>]*content=["']([^"']+)["']/i,
         /content=["']([^"']+)["'][^>]*property=["']og:image(?::url)?["']/i,
         /name=["']twitter:image(?::src)?["'][^>]*content=["']([^"']+)["']/i,
+        /"thumbnailUrl"\s*:\s*"([^"]+)"/i,
+        /"image"\s*:\s*"([^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/i,
+        /<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["']/i,
       ];
       const videoPatterns = [
         /property=["']og:video(?::url)?["'][^>]*content=["']([^"']+)["']/i,
@@ -295,7 +404,7 @@ export class NewsFetcherService {
       let image: string | undefined;
       for (const re of imagePatterns) {
         const m = html.match(re);
-        if (m?.[1]?.startsWith('http')) {
+        if (m?.[1]?.startsWith('http') && this.isLikelyArticleImage(m[1])) {
           image = m[1];
           break;
         }
@@ -324,7 +433,7 @@ export class NewsFetcherService {
   private isPlayableVideoUrl(url: string): boolean {
     if (!url.startsWith('http')) return false;
     if (/youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|facebook\.com\/watch/i.test(url)) {
-      return false;
+      return true;
     }
     return /\.(mp4|webm|m3u8|mov)(\?|$)/i.test(url) || /\/video\/|video\.|\.mp4/i.test(url);
   }

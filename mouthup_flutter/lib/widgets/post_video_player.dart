@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import '../theme/app_theme.dart';
+import '../utils/youtube.dart';
 
 /// Inline network video for feed and post detail.
 class PostVideoPlayer extends StatefulWidget {
-  const PostVideoPlayer({super.key, required this.url, this.height = 200});
+  const PostVideoPlayer({super.key, required this.url, this.height = 220});
 
   final String url;
   final double height;
@@ -21,10 +23,16 @@ class _PostVideoPlayerState extends State<PostVideoPlayer> {
   @override
   void initState() {
     super.initState();
-    _init();
+    final ytId = youtubeVideoId(widget.url);
+    if (ytId != null) {
+      _failed = false;
+      _ready = true;
+      return;
+    }
+    _initDirect();
   }
 
-  Future<void> _init() async {
+  Future<void> _initDirect() async {
     final controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
     _controller = controller;
     try {
@@ -46,6 +54,13 @@ class _PostVideoPlayerState extends State<PostVideoPlayer> {
     super.dispose();
   }
 
+  Future<void> _openYoutube(String videoId) async {
+    final uri = Uri.parse(youtubeWatchUrl(videoId));
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   void _togglePlay() {
     final c = _controller;
     if (c == null || !_ready) return;
@@ -60,6 +75,50 @@ class _PostVideoPlayerState extends State<PostVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    final ytId = youtubeVideoId(widget.url);
+    if (ytId != null) {
+      return _shell(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              youtubeThumbnail(ytId),
+              fit: BoxFit.cover,
+              errorBuilder: (_, e, s) => const ColoredBox(
+                color: AppColors.bgElevated,
+                child: Icon(Icons.videocam_outlined, color: AppColors.textDim, size: 40),
+              ),
+            ),
+            Container(color: Colors.black38),
+            Center(
+              child: Material(
+                color: Colors.white24,
+                shape: const CircleBorder(),
+                child: IconButton(
+                  iconSize: 52,
+                  color: Colors.white,
+                  onPressed: () => _openYoutube(ytId),
+                  icon: const Icon(Icons.play_arrow),
+                ),
+              ),
+            ),
+            const Positioned(
+              left: 10,
+              bottom: 10,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.play_circle_outline, color: Colors.white, size: 16),
+                  SizedBox(width: 4),
+                  Text('YouTube', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (_failed) {
       return _shell(
         child: const Column(

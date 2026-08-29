@@ -127,8 +127,14 @@ export class BotPostingService implements OnModuleInit, OnModuleDestroy {
     }
 
     const topic = this.news.nextTopicForBot(bot.id);
-    const item = await this.news.fetchForRegion(region, topic, bot.id);
+    let item = await this.news.fetchForRegion(region, topic, bot.id);
     if (!item) return false;
+
+    if (item.media.length === 0) {
+      const altTopic = this.news.nextTopicForBot(bot.id);
+      const alt = await this.news.fetchForRegion(region, altTopic, bot.id);
+      if (alt?.media.length) item = alt;
+    }
 
     const exists = await this.prisma.post.findUnique({
       where: { sourceUrl: item.sourceUrl },

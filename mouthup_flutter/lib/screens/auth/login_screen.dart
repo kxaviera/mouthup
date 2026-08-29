@@ -166,12 +166,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 12),
-            Text(
-              'Or use ${DemoAccount.email} / ${DemoAccount.password}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textDim, fontSize: 12),
-            ),
+            if (kDebugMode) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Or use ${DemoAccount.email} / ${DemoAccount.password}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textDim, fontSize: 12),
+              ),
+            ],
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,

@@ -51,20 +51,29 @@ export class AdminService {
   }
 
   searchUsers(q: string, limit = 20) {
+    const trimmed = q.trim();
     return this.prisma.user.findMany({
-      where: {
-        OR: [
-          { username: { contains: q, mode: 'insensitive' } },
-          { email: { contains: q, mode: 'insensitive' } },
-        ],
-      },
+      where: trimmed
+        ? {
+            OR: [
+              { username: { contains: trimmed, mode: 'insensitive' } },
+              { email: { contains: trimmed, mode: 'insensitive' } },
+            ],
+          }
+        : { role: UserRole.USER, isBot: false },
       take: limit,
+      orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         email: true,
         username: true,
         bannedAt: true,
         createdAt: true,
+        signupIp: true,
+        signupCountry: true,
+        signupRegion: true,
+        signupCity: true,
+        authProvider: true,
       },
     });
   }

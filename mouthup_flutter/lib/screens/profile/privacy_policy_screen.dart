@@ -12,32 +12,36 @@ class PrivacyPolicyScreen extends StatelessWidget {
       'We store your email (for login), permanent username, posts, comments, and direct messages. We do not require your real name, phone number, or photo.',
     ),
     (
-      '2. Anonymous by design',
+      '2. Signup information',
+      'When you create an account, we automatically record your IP address and approximate location (country, region, and city) from that IP. This is used for security, abuse prevention, and moderation — you are not asked to enter this information.',
+    ),
+    (
+      '3. Anonymous by design',
       'Your username cannot be changed. Other users see your username and pixel avatar only — not your email or wallet.',
     ),
     (
-      '3. How we use data',
+      '4. How we use data',
       'Data is used to operate the app: show your posts, deliver messages, enforce community rules, and send optional notifications about replies and DMs.',
     ),
     (
-      '4. What we do not do',
-      'We do not sell your personal data. We do not show ads based on your private messages. We do not publicly display your email.',
+      '5. What we do not do',
+      'We do not sell your personal data. We do not show ads based on your private messages. We do not publicly display your email or signup IP to other users.',
     ),
     (
-      '5. Content moderation',
+      '6. Content moderation',
       'Posts and messages may be scanned automatically for prohibited content (e.g. pornographic material). Reported content may be reviewed by moderators.',
     ),
     (
-      '6. Your controls',
+      '7. Your controls',
       'You can block users, delete your posts and comments, save posts privately, and delete your account at any time from Profile.',
     ),
     (
-      '7. Data retention',
+      '8. Data retention',
       'When you delete your account, your data is removed from our active systems. Some backups may persist briefly for security purposes.',
     ),
     (
-      '8. Contact',
-      'For privacy questions, contact support@mouthup.app (demo address — replace when live).',
+      '9. Contact',
+      'For privacy questions, contact support@mouthup.app.',
     ),
   ];
 

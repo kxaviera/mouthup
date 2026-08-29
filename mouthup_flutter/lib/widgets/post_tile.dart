@@ -7,6 +7,7 @@ import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/post_text.dart';
 import '../../widgets/post_content_text.dart';
+import '../../widgets/post_video_player.dart';
 import '../../widgets/user_avatar.dart';
 
 class PostTile extends StatelessWidget {
@@ -94,7 +95,7 @@ class PostTile extends StatelessWidget {
                           const SizedBox(height: 10),
                           _imageGallery(localImages),
                         ],
-                        if (localVideos.isNotEmpty) ...[
+                        if (localVideos.isNotEmpty || post.videoUrls.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           _videoGallery(localVideos),
                         ],
@@ -162,30 +163,45 @@ class PostTile extends StatelessWidget {
     );
   }
 
-  Widget _videoGallery(List<Uint8List> videos) {
-    return SizedBox(
+  Widget _videoGallery(List<Uint8List> localVideos) {
+    final urls = post.videoUrls;
+    final total = localVideos.length + urls.length;
+    if (total == 0) return const SizedBox.shrink();
+
+    if (total == 1 && urls.length == 1 && localVideos.isEmpty) {
+      return PostVideoPlayer(url: urls.first);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < localVideos.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          _localVideoPlaceholder(),
+        ],
+        for (var i = 0; i < urls.length; i++) ...[
+          if (localVideos.isNotEmpty || i > 0) const SizedBox(height: 8),
+          PostVideoPlayer(url: urls[i], height: 160),
+        ],
+      ],
+    );
+  }
+
+  Widget _localVideoPlaceholder() {
+    return Container(
       height: 120,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: videos.length,
-        separatorBuilder: (_, i) => const SizedBox(width: 8),
-        itemBuilder: (_, i) => Container(
-          width: 120,
-          height: 120,
-          decoration: BoxDecoration(
-            color: AppColors.bgElevated,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.play_circle_outline, color: AppColors.primary, size: 36),
-              SizedBox(height: 4),
-              Text('Video', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-            ],
-          ),
-        ),
+      decoration: BoxDecoration(
+        color: AppColors.bgElevated,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.play_circle_outline, color: AppColors.primary, size: 36),
+          SizedBox(height: 4),
+          Text('Video', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+        ],
       ),
     );
   }

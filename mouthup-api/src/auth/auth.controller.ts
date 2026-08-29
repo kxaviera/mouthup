@@ -5,9 +5,11 @@ import {
   Delete,
   HttpCode,
   Post,
+  Req,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
@@ -25,6 +27,7 @@ import {
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/types/auth-user';
+import { getSignupLocation } from '../common/utils/signup-location.util';
 
 @Controller('auth')
 export class AuthController {
@@ -47,7 +50,7 @@ export class AuthController {
   }
 
   @Post('register')
-  async register(@Body() dto: RegisterDto) {
+  async register(@Body() dto: RegisterDto, @Req() req: Request) {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
     });
@@ -59,6 +62,7 @@ export class AuthController {
         email: dto.email.toLowerCase(),
         passwordHash: await this.auth.hashPassword(dto.password),
         emailVerified: autoVerify,
+        ...getSignupLocation(req),
       },
     });
 
@@ -118,7 +122,7 @@ export class AuthController {
 
   @Post('firebase')
   @HttpCode(200)
-  async firebaseLogin(@Body() dto: FirebaseLoginDto) {
+  async firebaseLogin(@Body() dto: FirebaseLoginDto, @Req() req: Request) {
     if (!this.firebase.isConfigured()) {
       throw new BadRequestException('Firebase auth is not configured on the server');
     }
@@ -162,6 +166,7 @@ export class AuthController {
           firebaseUid: uid,
           authProvider: provider,
           emailVerified: true,
+          ...getSignupLocation(req),
         },
       });
     }

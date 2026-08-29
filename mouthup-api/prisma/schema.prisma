@@ -63,6 +63,10 @@ model User {
   fcmToken        String?   @map("fcm_token")
   isBot           Boolean   @default(false) @map("is_bot")
   region          String?   @map("region")
+  signupIp        String?   @map("signup_ip")
+  signupCountry   String?   @map("signup_country")
+  signupRegion    String?   @map("signup_region")
+  signupCity      String?   @map("signup_city")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 

@@ -116,7 +116,18 @@ export async function resolveReport(id: string, status: 'RESOLVED' | 'DISMISSED'
 
 export async function searchUsers(q: string) {
   return apiFetch<
-    { id: string; email: string; username: string | null; bannedAt: string | null; createdAt: string }[]
+    {
+      id: string;
+      email: string;
+      username: string | null;
+      bannedAt: string | null;
+      createdAt: string;
+      signupIp: string | null;
+      signupCountry: string | null;
+      signupRegion: string | null;
+      signupCity: string | null;
+      authProvider: string | null;
+    }[]
   >(`/admin/users?q=${encodeURIComponent(q)}`);
 }
 

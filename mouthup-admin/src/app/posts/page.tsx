@@ -22,6 +22,7 @@ export default function PostsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const queryRef = useRef(q);
 
   useEffect(() => {
@@ -34,11 +35,17 @@ export default function PostsPage() {
 
   const loadPosts = useCallback(async (query: string, silent = false) => {
     if (silent) setRefreshing(true);
-    else setLoading(true);
+    else {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const res = await searchPosts(query);
       setPosts(res);
       setLastUpdated(new Date());
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load posts';
+      if (!silent) setError(message);
     } finally {
       if (silent) setRefreshing(false);
       else setLoading(false);
@@ -104,9 +111,17 @@ export default function PostsPage() {
       </div>
 
       <div className="mt-6 space-y-2">
+        {error && (
+          <p className="rounded-lg border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+            {error}
+          </p>
+        )}
         {loading && <p className="text-zinc-500">Loading posts…</p>}
-        {!loading && posts.length === 0 && (
+        {!loading && !error && posts.length === 0 && (
           <p className="text-zinc-500">No posts found.</p>
+        )}
+        {!loading && posts.length > 0 && (
+          <p className="text-sm text-zinc-500">{posts.length} post(s) shown</p>
         )}
         {posts.map((p) => (
           <div
@@ -121,7 +136,7 @@ export default function PostsPage() {
                 {new Date(p.createdAt).toLocaleString()}
               </p>
               <p className="mt-1 whitespace-pre-wrap break-words">{p.content}</p>
-              {p.media.length > 0 && (
+              {p.media?.length ? (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {p.media.map((m, i) => (
                     <a
@@ -135,7 +150,7 @@ export default function PostsPage() {
                     </a>
                   ))}
                 </div>
-              )}
+              ) : null}
             </div>
             <button
               onClick={() => void handleDelete(p.id)}

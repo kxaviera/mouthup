@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'mouthup-api',
       cwd: './mouthup-api',
-      script: 'dist/src/main.js',
+      script: 'dist/main.js',
       instances: 1,
       exec_mode: 'fork',
       env: {

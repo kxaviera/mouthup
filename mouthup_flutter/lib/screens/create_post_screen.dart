@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import '../../models/post.dart';
+import '../../constants/account_types.dart';
+import '../../constants/listing_types.dart';
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/nav_back.dart';
@@ -28,29 +29,54 @@ class CreatePostScreen extends StatefulWidget {
 }
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
+  final _title = TextEditingController();
   final _content = TextEditingController();
+  final _price = TextEditingController();
+  final _swapFor = TextEditingController();
+  final _location = TextEditingController();
   final _picker = ImagePicker();
   final List<_PostAttachment> _attachments = [];
   bool _publishing = false;
   bool _acceptedTerms = true;
+  ListingTypeOption? _listingType;
+  RentPeriodId? _rentPeriod;
 
   static const _maxAttachments = 4;
 
   @override
+  void initState() {
+    super.initState();
+    final city = context.read<AppState>().userCity;
+    if (city != null) _location.text = city;
+  }
+
+  @override
   void dispose() {
+    _title.dispose();
     _content.dispose();
+    _price.dispose();
+    _swapFor.dispose();
+    _location.dispose();
     super.dispose();
   }
 
-  int get _wordCount => countWords(_content.text);
+  List<ListingTypeOption> _availableTypes(AppState app) {
+    final isProvider = accountTypeFromApi(app.accountType)?.id == AccountTypeId.serviceProvider;
+    return listingTypeOptions.where((t) {
+      if (t.id == ListingTypeId.service) return isProvider;
+      return true;
+    }).toList();
+  }
 
-  void _onContentChanged(String value) {
-    if (countWords(value) > PostLimits.maxWords) {
-      final clamped = clampToWordLimit(value);
-      _content.value = TextEditingValue(
-        text: clamped,
-        selection: TextSelection.collapsed(offset: clamped.length),
-      );
+  int get _wordCount => countWords('${_title.text}\n${_content.text}');
+
+  void _onTextChanged() {
+    final combined = '${_title.text}\n${_content.text}';
+    if (countWords(combined) > PostLimits.maxWords) {
+      final clamped = clampToWordLimit(combined);
+      final parts = clamped.split('\n');
+      _title.text = parts.first;
+      _content.text = parts.length > 1 ? parts.sublist(1).join('\n') : '';
     }
     setState(() {});
   }
@@ -77,27 +103,38 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     setState(() => _attachments.removeAt(index));
   }
 
+  double? _parsedPrice() {
+    final raw = _price.text.trim();
+    if (raw.isEmpty) return null;
+    return double.tryParse(raw);
+  }
+
   Future<void> _publish() async {
-    if (_publishing) return;
+    if (_publishing || _listingType == null) return;
     final app = context.read<AppState>();
-    final text = clampToWordLimit(_content.text.trim());
+    final title = _title.text.trim();
+    final content = _content.text.trim();
 
     if (!_acceptedTerms) return;
-    if (text.isEmpty && _attachments.isEmpty) return;
+    if (title.length < 3) return;
 
     setState(() => _publishing = true);
-
-    final post = MouthUpPost(
-      id: 'pending',
-      author: app.nickname,
-      content: text.isEmpty ? 'Shared media' : text,
-      createdAt: DateTime.now(),
-    );
 
     final images = _attachments.where((a) => a.kind == _AttachmentKind.image).map((a) => a.bytes).toList();
     final videos = _attachments.where((a) => a.kind == _AttachmentKind.video).map((a) => a.bytes).toList();
 
-    final blocked = await app.addPost(post, images: images, videos: videos);
+    final blocked = await app.addListing(
+      title: title,
+      content: content,
+      listingType: _listingType!,
+      price: _listingType!.id == ListingTypeId.giveaway ? null : _parsedPrice(),
+      rentPeriod: _listingType!.id == ListingTypeId.rent ? _rentPeriod : null,
+      swapFor: _listingType!.id == ListingTypeId.swap ? _swapFor.text.trim() : null,
+      location: _location.text.trim().isEmpty ? null : _location.text.trim(),
+      images: images,
+      videos: videos,
+    );
+
     if (!mounted) return;
     setState(() => _publishing = false);
 
@@ -112,11 +149,22 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     if (mounted) context.go('/home');
   }
 
-  bool get _canPublish => _acceptedTerms && (_content.text.trim().isNotEmpty || _attachments.isNotEmpty);
+  bool get _canPublish {
+    if (!_acceptedTerms || _listingType == null || _title.text.trim().length < 3) return false;
+    if (_listingType!.id == ListingTypeId.swap && _swapFor.text.trim().isEmpty) return false;
+    return _content.text.trim().isNotEmpty || _attachments.isNotEmpty;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final app = context.watch<AppState>();
+    final types = _availableTypes(app);
     final atWordLimit = _wordCount >= PostLimits.maxWords;
+    final showPrice = _listingType != null &&
+        _listingType!.id != ListingTypeId.giveaway &&
+        _listingType!.id != ListingTypeId.serviceRequest;
+    final showRentPeriod = _listingType?.id == ListingTypeId.rent;
+    final showSwapFor = _listingType?.id == ListingTypeId.swap;
 
     return PopScope(
       canPop: false,
@@ -131,7 +179,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               children: [
                 IconButton(onPressed: () => popOrGo(context, '/home'), icon: const Icon(Icons.close, color: AppColors.textMuted)),
                 const Expanded(
-                  child: Text('New Post', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.text)),
+                  child: Text('New listing', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.text)),
                 ),
                 TextButton(onPressed: _canPublish && !_publishing ? _publish : null, child: const Text('Post', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700))),
               ],
@@ -141,29 +189,80 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Max ${PostLimits.maxWords} words · photos & videos welcome. No pornographic content.',
-                      style: TextStyle(color: atWordLimit ? AppColors.danger : AppColors.textMuted, fontSize: 13),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: types.map((type) {
+                        final selected = _listingType?.id == type.id;
+                        return ChoiceChip(
+                          label: Text('${type.emoji} ${type.label}'),
+                          selected: selected,
+                          onSelected: (_) => setState(() => _listingType = type),
+                          selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                          labelStyle: TextStyle(color: selected ? AppColors.primary : AppColors.text, fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 16),
                     TextField(
+                      controller: _title,
+                      onChanged: (_) => _onTextChanged(),
+                      style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w700),
+                      decoration: const InputDecoration(hintText: 'Title — e.g. iPhone 13, 2BHK flat, AC repair'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
                       controller: _content,
-                      onChanged: _onContentChanged,
-                      maxLines: 6,
+                      onChanged: (_) => _onTextChanged(),
+                      maxLines: 5,
                       style: const TextStyle(color: AppColors.text),
-                      decoration: const InputDecoration(hintText: 'What\'s on your mind? Use #hashtags'),
+                      decoration: const InputDecoration(hintText: 'Description, condition, details…'),
                     ),
                     const SizedBox(height: 6),
                     Align(
                       alignment: Alignment.centerRight,
                       child: Text(
                         '$_wordCount / ${PostLimits.maxWords} words',
-                        style: TextStyle(
-                          color: atWordLimit ? AppColors.danger : AppColors.textDim,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(color: atWordLimit ? AppColors.danger : AppColors.textDim, fontSize: 12, fontWeight: FontWeight.w600),
                       ),
+                    ),
+                    if (showPrice) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _price,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: const TextStyle(color: AppColors.text),
+                        decoration: const InputDecoration(hintText: 'Price in ₹ (optional)'),
+                      ),
+                    ],
+                    if (showRentPeriod) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        children: rentPeriodOptions.map((opt) {
+                          final selected = _rentPeriod == opt.id;
+                          return ChoiceChip(
+                            label: Text(opt.label),
+                            selected: selected,
+                            onSelected: (_) => setState(() => _rentPeriod = opt.id),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                    if (showSwapFor) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _swapFor,
+                        onChanged: (_) => setState(() {}),
+                        style: const TextStyle(color: AppColors.text),
+                        decoration: const InputDecoration(hintText: 'What do you want in exchange?'),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _location,
+                      style: const TextStyle(color: AppColors.text),
+                      decoration: const InputDecoration(hintText: 'Location / area'),
                     ),
                     const SizedBox(height: 16),
                     _mediaAttachmentSection(),
@@ -173,7 +272,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ),
             _termsAcceptance(),
             const SizedBox(height: 12),
-            PrimaryButton(title: _publishing ? 'Posting...' : 'Publish post', onPressed: _canPublish && !_publishing ? _publish : null),
+            PrimaryButton(title: _publishing ? 'Posting…' : 'Publish listing', onPressed: _canPublish && !_publishing ? _publish : null),
             const SizedBox(height: 16),
           ],
         ),
@@ -204,10 +303,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               const Text('I accept the ', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
               GestureDetector(
                 onTap: () => context.push('/profile/terms'),
-                child: const Text(
-                  'Terms & Conditions',
-                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13),
-                ),
+                child: const Text('Terms & Conditions', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
               ),
             ],
           ),

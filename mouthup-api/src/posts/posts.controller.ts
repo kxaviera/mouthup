@@ -9,44 +9,16 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
 import { PostsService } from './posts.service';
+import { CreateListingDto, ListingStatusDto } from './dto/create-listing.dto';
+import { FeedQueryDto } from './dto/feed-query.dto';
 import { JwtAuthGuard, OptionalJwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { VerifiedUserGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/types/auth-user';
 import { CursorPaginationDto } from '../common/dto/cursor-pagination.dto';
-
-class MediaItemDto {
-  @IsString()
-  type!: 'IMAGE' | 'VIDEO';
-
-  @IsString()
-  url!: string;
-}
-
-class CreatePostDto {
-  @IsString()
-  content!: string;
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => MediaItemDto)
-  media?: MediaItemDto[];
-}
-
-class UpdatePostDto {
-  @IsString()
-  content!: string;
-}
-
-class FeedQueryDto extends CursorPaginationDto {
-  @IsOptional()
-  @IsString()
-  hashtag?: string;
-}
+import { SupportReactionDto } from './dto/support-reaction.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 
 @Controller('posts')
 export class PostsController {
@@ -59,6 +31,9 @@ export class PostsController {
       cursor: query.cursor,
       limit: query.limit,
       hashtag: query.hashtag,
+      q: query.q,
+      listingType: query.listingType,
+      city: query.city,
       viewerId: user?.id,
     });
   }
@@ -88,8 +63,8 @@ export class PostsController {
 
   @Post()
   @UseGuards(JwtAuthGuard, VerifiedUserGuard)
-  create(@CurrentUser() user: AuthUser, @Body() dto: CreatePostDto) {
-    return this.posts.create(user.id, dto.content, dto.media ?? []);
+  create(@CurrentUser() user: AuthUser, @Body() dto: CreateListingDto) {
+    return this.posts.createListing(user.id, dto);
   }
 
   @Patch(':id')
@@ -102,6 +77,16 @@ export class PostsController {
     return this.posts.updatePost(user.id, id, dto.content);
   }
 
+  @Patch(':id/listing-status')
+  @UseGuards(JwtAuthGuard, VerifiedUserGuard)
+  listingStatus(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ListingStatusDto,
+  ) {
+    return this.posts.updateListingStatus(user.id, id, dto.status);
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard, VerifiedUserGuard)
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
@@ -112,5 +97,21 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   save(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.posts.toggleSave(user.id, id);
+  }
+
+  @Post(':id/like')
+  @UseGuards(JwtAuthGuard)
+  like(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.posts.toggleLike(user.id, id);
+  }
+
+  @Post(':id/support')
+  @UseGuards(JwtAuthGuard)
+  support(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SupportReactionDto,
+  ) {
+    return this.posts.toggleSupportReaction(user.id, id, dto.type);
   }
 }

@@ -19,24 +19,38 @@ type Report = {
 export default function ReportsPage() {
   const router = useRouter();
   const [reports, setReports] = useState<Report[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!getStoredToken()) {
       router.replace('/login');
       return;
     }
-    getReports().then(setReports).catch(() => router.replace('/login'));
+    getReports()
+      .then(setReports)
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Failed to load reports');
+      });
   }, [router]);
 
   async function handleResolve(id: string, status: 'RESOLVED' | 'DISMISSED') {
-    await resolveReport(id, status);
-    setReports((prev) => prev.filter((r) => r.id !== id));
+    try {
+      setError(null);
+      await resolveReport(id, status);
+      setReports((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update report');
+    }
   }
 
   return (
     <AdminShell>
       <h1 className="text-2xl font-bold">Reports</h1>
       <p className="mt-1 text-zinc-500">Review flagged content</p>
+
+      {error && (
+        <p className="mt-4 rounded-lg border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-300">{error}</p>
+      )}
 
       <div className="mt-8 space-y-3">
         {reports.length === 0 && <p className="text-zinc-500">No pending reports</p>}

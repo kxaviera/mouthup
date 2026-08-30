@@ -25,7 +25,7 @@ Use the seeded admin account from `mouthup-api`:
 |--------|---------|
 | Dashboard | User/post/report/message counts |
 | Reports | Review and resolve flagged content |
-| Users | Search, ban users |
+| Users | Search, verify badges, ban users |
 | Posts | Search, delete posts |
 
 ## Stack

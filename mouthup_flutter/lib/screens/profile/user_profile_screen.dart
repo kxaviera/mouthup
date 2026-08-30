@@ -3,29 +3,48 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
-import '../../utils/post_share.dart';
 import '../../utils/user_profile_nav.dart';
-import '../../widgets/post_tile.dart';
 import '../../widgets/screen_wrapper.dart';
-import '../../widgets/user_avatar.dart';
+import '../../widgets/social_profile_body.dart';
 
-class UserProfileScreen extends StatelessWidget {
+class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key, required this.username});
 
   final String username;
 
   @override
+  State<UserProfileScreen> createState() => _UserProfileScreenState();
+}
+
+class _UserProfileScreenState extends State<UserProfileScreen> {
+  bool _followLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppState>().loadPublicProfile(widget.username);
+    });
+  }
+
+  Future<void> _toggleFollow(AppState app) async {
+    setState(() => _followLoading = true);
+    await app.toggleFollow(widget.username);
+    if (mounted) setState(() => _followLoading = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
 
-    if (app.isSelf(username)) {
+    if (app.isSelf(widget.username)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) context.go('/profile');
       });
       return const SizedBox.shrink();
     }
 
-    if (!app.canViewProfile(username)) {
+    if (!app.canViewProfile(widget.username)) {
       return ScreenWrapper(
         child: Column(
           children: [
@@ -43,8 +62,7 @@ class UserProfileScreen extends StatelessWidget {
       );
     }
 
-    final userPosts = app.postsByUser(username);
-    final canMessage = app.canDm(username);
+    final canMessage = app.canDm(widget.username);
 
     return PopScope(
       canPop: true,
@@ -59,72 +77,37 @@ class UserProfileScreen extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(onPressed: () => context.pop(), icon: const Icon(Icons.arrow_back, color: AppColors.text)),
-                  Expanded(
-                    child: Text(
-                      username,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.text),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  UserAvatar(name: username, radius: 36),
-                  const SizedBox(height: 14),
-                  Text(username, style: const TextStyle(color: AppColors.text, fontSize: 22, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${userPosts.length} post${userPosts.length == 1 ? '' : 's'} · Anonymous',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-                  ),
-                  if (canMessage) ...[
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () => openDirectChat(context, app, username),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.text,
-                          side: const BorderSide(color: AppColors.border),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text('Message', style: TextStyle(fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const Divider(height: 1, thickness: 1, color: AppColors.border),
-            Expanded(
-              child: userPosts.isEmpty
-                  ? const Center(child: Text('No posts yet', style: TextStyle(color: AppColors.textMuted)))
-                  : ListView.builder(
-                      itemCount: userPosts.length,
-                      itemBuilder: (_, i) {
-                        final post = userPosts[i];
-                        return PostTile(
-                          post: post,
-                          showDivider: i < userPosts.length - 1,
-                          onTap: () => context.push('/post/${post.id}'),
-                          onSave: () {
-                            final wasSaved = post.userSaved;
-                            app.toggleSavePost(post.id);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(wasSaved ? 'Removed from saved' : 'Post saved')),
-                            );
-                          },
-                          onComment: () => context.push('/post/${post.id}'),
-                          onShare: () => sharePost(context, post),
-                          onAuthorTap: () => openUserProfile(context, app, post.author),
+                  const Text('Profile', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.text)),
+                  const Spacer(),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: AppColors.text),
+                    color: AppColors.bgCard,
+                    onSelected: (value) async {
+                      if (value == 'block') {
+                        final error = await app.blockUser(widget.username);
+                        if (!context.mounted) return;
+                        context.pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error ?? '${widget.username} blocked')),
                         );
-                      },
-                    ),
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'block', child: Text('Block user', style: TextStyle(color: AppColors.danger))),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SocialProfileBody(
+                app: app,
+                username: widget.username,
+                isSelf: false,
+                followLoading: _followLoading,
+                onFollow: () => _toggleFollow(app),
+                onMessage: canMessage ? () => openDirectChat(context, app, widget.username) : null,
+              ),
             ),
           ],
         ),

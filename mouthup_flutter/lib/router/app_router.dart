@@ -12,17 +12,25 @@ import '../screens/edit_post_screen.dart';
 import '../screens/home_shell.dart';
 import '../screens/messages/dm_chat_screen.dart';
 import '../screens/not_found_screen.dart';
+import '../screens/onboarding/account_type_screen.dart';
+import '../screens/onboarding/city_screen.dart';
 import '../screens/onboarding/choose_name_screen.dart';
-import '../screens/onboarding/safety_screen.dart';
+import '../screens/onboarding/profession_screen.dart';
+import '../screens/onboarding/welcome_screen.dart';
 import '../screens/post_detail_screen.dart';
 import '../screens/profile/blocked_users_screen.dart';
+import '../screens/profile/connections_screen.dart';
+import '../screens/profile/feed_settings_screen.dart';
 import '../screens/profile/privacy_policy_screen.dart';
+import '../screens/profile/profile_settings_screen.dart';
 import '../screens/profile/terms_screen.dart';
 import '../screens/profile/my_posts_screen.dart';
 import '../screens/profile/notifications_screen.dart';
 import '../screens/profile/saved_posts_screen.dart';
 import '../screens/profile/user_profile_screen.dart';
 import '../screens/splash_screen.dart';
+import '../screens/tabs/feed_screen.dart';
+import '../screens/tabs/search_screen.dart';
 import '../screens/tabs/profile_screen.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
@@ -56,8 +64,9 @@ GoRouter createRouter(AppState app) {
         return '/onboarding/nickname';
       }
 
+      if (loc == '/signup') return null;
+
       if (loc == '/login' ||
-          loc == '/signup' ||
           loc == '/verify-email' ||
           loc.startsWith('/onboarding/') ||
           loc == '/forgot-password' ||
@@ -79,16 +88,64 @@ GoRouter createRouter(AppState app) {
         builder: (_, s) => ResetPasswordScreen(email: s.uri.queryParameters['email'] ?? ''),
       ),
       GoRoute(path: '/onboarding/nickname', builder: (_, s) => const ChooseNameScreen()),
-      GoRoute(path: '/onboarding/safety', builder: (_, s) => const SafetyScreen()),
-      GoRoute(path: '/home', builder: (_, s) => const HomeShell()),
-      GoRoute(path: '/profile', builder: (_, s) => const ProfileScreen()),
+      GoRoute(path: '/onboarding/account-type', builder: (_, s) => const AccountTypeScreen()),
+      GoRoute(path: '/onboarding/profession', builder: (_, s) => const ProfessionScreen()),
+      GoRoute(path: '/onboarding/city', builder: (_, s) => const CityScreen()),
+      GoRoute(path: '/onboarding/welcome', builder: (_, s) => const WelcomeScreen()),
+      GoRoute(path: '/onboarding/safety', redirect: (_, s) => '/onboarding/welcome'),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) => HomeShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home',
+                pageBuilder: (_, state) => const NoTransitionPage(child: FeedScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/search',
+                pageBuilder: (_, state) => const NoTransitionPage(child: SearchScreen(inTabShell: true)),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/chats',
+                pageBuilder: (_, state) => const NoTransitionPage(child: ChatsScreen(inTabShell: true)),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                pageBuilder: (_, state) => const NoTransitionPage(child: ProfileScreen(inTabShell: true)),
+              ),
+            ],
+          ),
+        ],
+      ),
       GoRoute(path: '/profile/posts', builder: (_, s) => const MyPostsScreen()),
       GoRoute(path: '/profile/saved', builder: (_, s) => const SavedPostsScreen()),
       GoRoute(path: '/profile/blocked', builder: (_, s) => const BlockedUsersScreen()),
+      GoRoute(path: '/profile/settings', builder: (_, s) => const ProfileSettingsScreen()),
+      GoRoute(
+        path: '/profile/connections',
+        builder: (_, s) {
+          final type = s.uri.queryParameters['type'] ?? 'following';
+          final user = s.uri.queryParameters['user'] ?? app.nickname;
+          return ConnectionsScreen(username: user, showFollowers: type == 'followers');
+        },
+      ),
       GoRoute(path: '/profile/terms', builder: (_, s) => const TermsScreen()),
       GoRoute(path: '/profile/privacy', builder: (_, s) => const PrivacyPolicyScreen()),
+      GoRoute(path: '/profile/feed-settings', builder: (_, s) => const FeedSettingsScreen()),
       GoRoute(path: '/notifications', builder: (_, s) => const NotificationsScreen()),
-      GoRoute(path: '/chats', builder: (_, s) => const ChatsScreen()),
       GoRoute(path: '/rooms', redirect: (_, s) => '/chats'),
       GoRoute(path: '/messages', redirect: (_, s) => '/chats'),
       GoRoute(path: '/create-post', builder: (_, s) => const CreatePostScreen()),
@@ -106,7 +163,10 @@ GoRouter createRouter(AppState app) {
       ),
       GoRoute(
         path: '/messages/chat',
-        builder: (_, s) => DmChatScreen(peer: s.uri.queryParameters['peer'] ?? ''),
+        builder: (_, s) => DmChatScreen(
+          peer: s.uri.queryParameters['peer'] ?? '',
+          postId: s.uri.queryParameters['postId'],
+        ),
       ),
     ],
   );

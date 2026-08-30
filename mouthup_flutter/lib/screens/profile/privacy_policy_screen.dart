@@ -16,8 +16,8 @@ class PrivacyPolicyScreen extends StatelessWidget {
       'When you create an account, we automatically record your IP address and approximate location (country, region, and city) from that IP. This is used for security, abuse prevention, and moderation — you are not asked to enter this information.',
     ),
     (
-      '3. Anonymous by design',
-      'Your username cannot be changed. Other users see your username and pixel avatar only — not your email or wallet.',
+      '3. Public username',
+      'Your username is your public identity on MouthUp and cannot be changed. Other users see your username, profile type, city, and listings — not your email.',
     ),
     (
       '4. How we use data',

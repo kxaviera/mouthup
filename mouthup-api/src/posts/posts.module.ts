@@ -3,9 +3,10 @@ import { PostsController } from './posts.controller';
 import { PostsService } from './posts.service';
 import { UsersModule } from '../users/users.module';
 import { ModerationModule } from '../moderation/moderation.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
-  imports: [UsersModule, ModerationModule],
+  imports: [UsersModule, ModerationModule, RealtimeModule],
   controllers: [PostsController],
   providers: [PostsService],
   exports: [PostsService],

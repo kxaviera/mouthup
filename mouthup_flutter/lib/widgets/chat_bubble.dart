@@ -53,35 +53,31 @@ class ChatBubble extends StatelessWidget {
   }
 
   Widget _systemBubble() {
+    final info = message.text.startsWith('📝') || message.text.startsWith('⭐');
+    final accent = info ? AppColors.primary : AppColors.danger;
     return Center(
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         constraints: const BoxConstraints(maxWidth: 320),
         decoration: BoxDecoration(
-          color: AppColors.danger.withValues(alpha: 0.08),
+          color: accent.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
+          border: Border.all(color: accent.withValues(alpha: 0.25)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.shield_outlined, color: AppColors.danger, size: 16),
+            Icon(
+              info ? Icons.info_outline : Icons.shield_outlined,
+              color: info ? AppColors.textMuted : AppColors.danger,
+              size: 16,
+            ),
             const SizedBox(width: 8),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    nickname,
-                    style: const TextStyle(color: AppColors.danger, fontSize: 10, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    message.text,
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.35),
-                  ),
-                ],
+              child: Text(
+                message.text,
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.35),
               ),
             ),
           ],

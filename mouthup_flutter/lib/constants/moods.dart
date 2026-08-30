@@ -73,6 +73,42 @@ const livePulse = [
 
 Mood moodById(MoodId id) => moods.firstWhere((m) => m.id == id);
 
+String moodToApi(MoodId id) {
+  switch (id) {
+    case MoodId.anxious:
+      return 'ANXIOUS';
+    case MoodId.low:
+      return 'LOW';
+    case MoodId.angry:
+      return 'ANGRY';
+    case MoodId.good:
+      return 'GOOD';
+    case MoodId.confused:
+      return 'CONFUSED';
+    case MoodId.excited:
+      return 'EXCITED';
+  }
+}
+
+MoodId? moodIdFromApi(String? value) {
+  switch (value?.toUpperCase()) {
+    case 'ANXIOUS':
+      return MoodId.anxious;
+    case 'LOW':
+      return MoodId.low;
+    case 'ANGRY':
+      return MoodId.angry;
+    case 'GOOD':
+      return MoodId.good;
+    case 'CONFUSED':
+      return MoodId.confused;
+    case 'EXCITED':
+      return MoodId.excited;
+    default:
+      return null;
+  }
+}
+
 const nicknames = ['CoolBreeze47', 'SilentOwl', 'NightWalker', 'CalmRiver', 'StarGazer22'];
 
 const mockMessages = [

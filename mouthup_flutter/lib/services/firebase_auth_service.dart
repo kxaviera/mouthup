@@ -9,13 +9,15 @@ class FirebaseAuthService {
   FirebaseAuthService({FirebaseAuth? auth, GoogleSignIn? googleSignIn})
       : _auth = auth ?? FirebaseAuth.instance,
         _googleSignIn = googleSignIn ??
-            GoogleSignIn(
-              serverClientId:
-                  '55773552314-cpq6qmi8oddb9ovuohanc6kl3cv1s7ap.apps.googleusercontent.com',
-            );
+            (kIsWeb
+                ? null
+                : GoogleSignIn(
+                    serverClientId:
+                        '55773552314-cpq6qmi8oddb9ovuohanc6kl3cv1s7ap.apps.googleusercontent.com',
+                  ));
 
   final FirebaseAuth _auth;
-  final GoogleSignIn _googleSignIn;
+  final GoogleSignIn? _googleSignIn;
 
   static bool get isAvailable => DefaultFirebaseOptions.isConfigured;
 
@@ -25,7 +27,7 @@ class FirebaseAuthService {
       return _auth.signInWithPopup(provider);
     }
 
-    final googleUser = await _googleSignIn.signIn();
+    final googleUser = await _googleSignIn!.signIn();
     if (googleUser == null) return null;
 
     final googleAuth = await googleUser.authentication;
@@ -53,7 +55,7 @@ class FirebaseAuthService {
   Future<void> signOut() async {
     await Future.wait([
       _auth.signOut(),
-      if (!kIsWeb) _googleSignIn.signOut(),
+      if (!kIsWeb && _googleSignIn != null) _googleSignIn!.signOut(),
     ]);
   }
 }

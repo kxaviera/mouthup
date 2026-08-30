@@ -10,7 +10,9 @@ import '../../widgets/screen_wrapper.dart';
 import '../../widgets/user_avatar.dart';
 
 class ChatsScreen extends StatefulWidget {
-  const ChatsScreen({super.key});
+  const ChatsScreen({super.key, this.inTabShell = false});
+
+  final bool inTabShell;
 
   @override
   State<ChatsScreen> createState() => _ChatsScreenState();
@@ -42,7 +44,12 @@ class _ChatsScreenState extends State<ChatsScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) popOrGo(context, '/home');
+        if (didPop) return;
+        if (widget.inTabShell) {
+          context.go('/home');
+        } else {
+          popOrGo(context, '/home');
+        }
       },
       child: ScreenWrapper(
         padding: false,
@@ -52,10 +59,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
           children: [
             Container(
               decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border))),
-              padding: const EdgeInsets.fromLTRB(4, 4, 16, 12),
+              padding: EdgeInsets.fromLTRB(widget.inTabShell ? 16 : 4, 4, 16, 12),
               child: Row(
                 children: [
-                  IconButton(onPressed: () => popOrGo(context, '/home'), icon: const Icon(Icons.arrow_back, color: AppColors.text)),
+                  if (!widget.inTabShell)
+                    IconButton(onPressed: () => popOrGo(context, '/home'), icon: const Icon(Icons.arrow_back, color: AppColors.text)),
                   const Expanded(child: Text('Messages', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.text))),
                   if (unreadDms > 0)
                     Container(
@@ -70,6 +78,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
               child: conversations.isEmpty
                   ? const Center(child: Text('No conversations yet', style: TextStyle(color: AppColors.textMuted)))
                   : ListView.separated(
+                      padding: const EdgeInsets.only(bottom: 80),
                       itemCount: conversations.length,
                       separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
                       itemBuilder: (_, i) {

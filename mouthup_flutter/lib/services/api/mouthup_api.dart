@@ -14,25 +14,46 @@ class SessionUser {
     required this.id,
     required this.email,
     this.username,
+    this.screenName,
     required this.emailVerified,
     required this.onboardingDone,
     this.usernameLocked = false,
+    this.accountType,
+    this.profession,
+    this.city,
+    this.followerCount = 0,
+    this.followingCount = 0,
+    this.isVerified = false,
   });
 
   final String id;
   final String email;
   final String? username;
+  final String? screenName;
   final bool emailVerified;
   final bool onboardingDone;
   final bool usernameLocked;
+  final String? accountType;
+  final String? profession;
+  final String? city;
+  final int followerCount;
+  final int followingCount;
+  final bool isVerified;
 
   factory SessionUser.fromJson(Map<String, dynamic> json) => SessionUser(
         id: json['id'] as String? ?? '',
         email: json['email'] as String? ?? '',
         username: json['username'] as String?,
+        screenName: json['screenName'] as String?,
         emailVerified: json['emailVerified'] as bool? ?? false,
         onboardingDone: json['onboardingDone'] as bool? ?? false,
         usernameLocked: json['usernameLocked'] as bool? ?? false,
+        accountType: json['accountType'] as String?,
+        profession: json['profession'] as String?,
+        city: json['city'] as String?,
+        followerCount: json['followerCount'] as int? ?? 0,
+        followingCount: json['followingCount'] as int? ?? 0,
+        isVerified: json['isVerified'] as bool? ?? false,
       );
 }
 
@@ -55,6 +76,7 @@ class MouthUpApi {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         if (!options.path.contains('/auth/login') &&
+            !options.path.contains('/auth/demo') &&
             !options.path.contains('/auth/register') &&
             !options.path.contains('/auth/firebase') &&
             !options.path.contains('/auth/refresh')) {
@@ -171,8 +193,19 @@ class MouthUpApi {
 
   // — Auth —
 
-  Future<AuthResult> login(String email, String password) async {
-    return _post('/auth/login', {'email': email, 'password': password}, (data) {
+  Future<AuthResult> loginAsDemo() async {
+    return _post('/auth/demo', {}, (data) {
+      final map = data as Map<String, dynamic>;
+      return AuthResult(
+        accessToken: map['accessToken'] as String,
+        refreshToken: map['refreshToken'] as String,
+        user: SessionUser.fromJson(map['user'] as Map<String, dynamic>),
+      );
+    });
+  }
+
+  Future<AuthResult> login(String login, String password) async {
+    return _post('/auth/login', {'login': login, 'password': password}, (data) {
       final map = data as Map<String, dynamic>;
       return AuthResult(
         accessToken: map['accessToken'] as String,
@@ -245,9 +278,54 @@ class MouthUpApi {
     return _get('/users/me', (data) => SessionUser.fromJson(data as Map<String, dynamic>));
   }
 
-  Future<SessionUser> assignUsername(String username) async {
-    return _post('/users/username', {'username': username}, (data) {
+  Future<SessionUser> assignUsername(String username, String screenName) async {
+    return _post('/users/username', {'username': username, 'screenName': screenName}, (data) {
       return SessionUser.fromJson(data as Map<String, dynamic>);
+    });
+  }
+
+  Future<SessionUser> updateScreenName(String screenName) async {
+    return _patch('/users/screen-name', {'screenName': screenName}, (data) {
+      return SessionUser.fromJson(data as Map<String, dynamic>);
+    });
+  }
+
+  Future<SessionUser> completeProfile({
+    required String accountType,
+    String? profession,
+    String? city,
+  }) async {
+    return _post('/users/onboarding/complete', {
+      'accountType': accountType,
+      if (profession != null) 'profession': profession,
+      if (city != null) 'city': city,
+    }, (data) => SessionUser.fromJson(data as Map<String, dynamic>));
+  }
+
+  Future<void> followUser(String username) => _post('/users/$username/follow', {}, (_) {});
+
+  Future<void> unfollowUser(String username) => _delete('/users/$username/follow', (_) {});
+
+  Future<List<String>> fetchFollowing() async {
+    return _get('/users/me/following', (data) {
+      return (data as List).map((e) => e as String).toList();
+    });
+  }
+
+  Future<List<String>> fetchFollowers() async {
+    return _get('/users/me/followers', (data) {
+      return (data as List).map((e) => e as String).toList();
+    });
+  }
+
+  Future<Map<String, dynamic>> fetchPublicProfile(String username) async {
+    return _get('/users/$username', (data) => Map<String, dynamic>.from(data as Map));
+  }
+
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    if (query.trim().isEmpty) return [];
+    return _get('/users/search?q=${Uri.encodeComponent(query.trim())}', (data) {
+      return (data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
     });
   }
 
@@ -279,8 +357,18 @@ class MouthUpApi {
 
   // — Posts —
 
-  Future<List<MouthUpPost>> fetchFeed({String? hashtag}) async {
-    final query = hashtag != null ? '?hashtag=${Uri.encodeComponent(hashtag.replaceFirst('#', ''))}' : '';
+  Future<List<MouthUpPost>> fetchFeed({
+    String? hashtag,
+    String? q,
+    String? listingType,
+    String? city,
+  }) async {
+    final params = <String, String>{};
+    if (hashtag != null) params['hashtag'] = hashtag.replaceFirst('#', '');
+    if (q != null && q.isNotEmpty) params['q'] = q;
+    if (listingType != null) params['listingType'] = listingType;
+    if (city != null && city.isNotEmpty) params['city'] = city;
+    final query = params.isEmpty ? '' : '?${params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
     return _get('/posts$query', (data) {
       final items = (data as Map<String, dynamic>)['items'] as List;
       return items.map((e) => MouthUpPost.fromJson(e as Map<String, dynamic>)).toList();
@@ -297,14 +385,59 @@ class MouthUpApi {
     return _get('/posts/$id', (data) => MouthUpPost.fromJson(data as Map<String, dynamic>));
   }
 
+  Future<MouthUpPost> createListing({
+    required String title,
+    required String content,
+    required String listingType,
+    double? price,
+    String? currency,
+    String? rentPeriod,
+    String? swapFor,
+    String? location,
+    List<Map<String, String>> media = const [],
+  }) async {
+    return _post('/posts', {
+      'title': title,
+      'content': content,
+      'listingType': listingType,
+      if (price != null) 'price': price,
+      if (currency != null) 'currency': currency,
+      if (rentPeriod != null) 'rentPeriod': rentPeriod,
+      if (swapFor != null) 'swapFor': swapFor,
+      if (location != null) 'location': location,
+      if (media.isNotEmpty) 'media': media,
+    }, (data) => MouthUpPost.fromJson(data as Map<String, dynamic>));
+  }
+
+  Future<bool> toggleLike(String postId) async {
+    final res = await _post('/posts/$postId/like', {}, (data) => data);
+    return (res as Map<String, dynamic>)['liked'] as bool;
+  }
+
+  Future<MouthUpPost> updateListingStatus(String postId, String status) async {
+    return _patch('/posts/$postId/listing-status', {'status': status},
+        (data) => MouthUpPost.fromJson(data as Map<String, dynamic>));
+  }
+
   Future<MouthUpPost> createPost(
     String content, {
     List<Map<String, String>> media = const [],
+    String? mood,
   }) async {
     return _post('/posts', {
       'content': content,
       if (media.isNotEmpty) 'media': media,
+      if (mood != null) 'mood': mood,
     }, (data) => MouthUpPost.fromJson(data as Map<String, dynamic>));
+  }
+
+  Future<SupportReactionType?> toggleSupportReaction(String postId, SupportReactionType type) async {
+    return _post('/posts/$postId/support', {
+      'type': supportReactionToApi(type),
+    }, (data) {
+      final map = data as Map<String, dynamic>;
+      return supportReactionFromApi(map['reaction'] as String?);
+    });
   }
 
   Future<Map<String, String>> uploadMedia(Uint8List bytes, String filename) async {

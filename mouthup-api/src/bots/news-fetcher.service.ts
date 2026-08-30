@@ -5,10 +5,6 @@ import { localeForSlug } from './news-gl-codes';
 import { MAX_POST_WORDS } from '../common/utils/post-text.util';
 
 export type NewsTopic =
-  | 'NEWS'
-  | 'POLITICS'
-  | 'WORLD'
-  | 'BUSINESS'
   | 'TECHNOLOGY'
   | 'SCIENCE'
   | 'HEALTH'
@@ -21,10 +17,7 @@ export type NewsTopic =
   | 'FASHION'
   | 'FOOD'
   | 'TRAVEL'
-  | 'CRIME'
-  | 'EDUCATION'
-  | 'CLIMATE'
-  | 'CRYPTO';
+  | 'EDUCATION';
 
 export interface RealNewsItem {
   title: string;
@@ -34,15 +27,8 @@ export interface RealNewsItem {
   topic: NewsTopic;
 }
 
-/** Every bot rotates through the full topic list — no regional restrictions. */
-const ALL_TOPICS: NewsTopic[] = [
-  'NEWS',
-  'POLITICS',
-  'WORLD',
-  'BUSINESS',
-  'TECHNOLOGY',
-  'SCIENCE',
-  'HEALTH',
+/** Bots only post uplifting topics — no news, politics, crime, or doom. */
+const POSITIVE_TOPICS: NewsTopic[] = [
   'SPORTS',
   'ENTERTAINMENT',
   'BOLLYWOOD',
@@ -52,33 +38,33 @@ const ALL_TOPICS: NewsTopic[] = [
   'FASHION',
   'FOOD',
   'TRAVEL',
-  'CRIME',
+  'HEALTH',
+  'SCIENCE',
+  'TECHNOLOGY',
   'EDUCATION',
-  'CLIMATE',
-  'CRYPTO',
 ];
 
+/** Block accidents, politics, violence, disasters, and other negative headlines. */
+const NEGATIVE_HEADLINE =
+  /\b(death|deaths|died|die|dies|kill|killed|kills|murder|suicide|assault|rape|abuse|terror|terrorist|bomb|bombing|shooting|shot dead|gunman|stabb|war|airstrike|missile|invasion|conflict|casualt|hostage|kidnap|accident|crash|crashes|crashed|collision|derail|wreck|fire kills|deadly|fatal|fatality|injured in|politic|election|parliament|congress|minister|senator|government|democrat|republican|vote|ballot|scandal|corruption|fraud|scam|arrest|arrested|charged with|convict|prison|jail|crime|criminal|robbery|theft|murder|disaster|earthquake|tsunami|flood|flooding|hurricane|tornado|cyclone|wildfire|landslide|outbreak|pandemic|layoff|layoffs|recession|bankrupt|crisis|protest|riot|clash|violence|violent|mourn|funeral|condolence|slump|plunge|tumble|losses|crypto crash|bitcoin crash|climate crisis|extinction|pollution crisis)\b/i;
+
+const EXCLUDE_FROM_SEARCH =
+  ' -death -kill -murder -accident -crash -war -attack -crime -arrest -scandal -disaster -protest -politics -election -suicide -shooting -fatal -deadly';
+
 const TOPIC_TAGS: Record<NewsTopic, string[]> = {
-  NEWS: ['#news', '#latest'],
-  POLITICS: ['#politics', '#government'],
-  WORLD: ['#world', '#breaking'],
-  BUSINESS: ['#business', '#markets'],
-  TECHNOLOGY: ['#tech', '#innovation'],
-  SCIENCE: ['#science', '#discovery'],
-  HEALTH: ['#health', '#wellness'],
-  SPORTS: ['#sports', '#live'],
-  ENTERTAINMENT: ['#entertainment', '#viral'],
-  BOLLYWOOD: ['#bollywood', '#entertainment'],
-  HOLLYWOOD: ['#hollywood', '#movies'],
-  MUSIC: ['#music', '#entertainment'],
-  GAMING: ['#gaming', '#esports'],
-  FASHION: ['#fashion', '#style'],
-  FOOD: ['#food', '#recipes'],
-  TRAVEL: ['#travel', '#tourism'],
-  CRIME: ['#crime', '#law'],
-  EDUCATION: ['#education', '#schools'],
-  CLIMATE: ['#climate', '#environment'],
-  CRYPTO: ['#crypto', '#finance'],
+  TECHNOLOGY: ['#tech', '#innovation', '#goodvibes'],
+  SCIENCE: ['#science', '#discovery', '#goodvibes'],
+  HEALTH: ['#health', '#wellness', '#goodvibes'],
+  SPORTS: ['#sports', '#highlights', '#goodvibes'],
+  ENTERTAINMENT: ['#entertainment', '#viral', '#goodvibes'],
+  BOLLYWOOD: ['#bollywood', '#entertainment', '#goodvibes'],
+  HOLLYWOOD: ['#hollywood', '#movies', '#goodvibes'],
+  MUSIC: ['#music', '#entertainment', '#goodvibes'],
+  GAMING: ['#gaming', '#fun', '#goodvibes'],
+  FASHION: ['#fashion', '#style', '#goodvibes'],
+  FOOD: ['#food', '#recipes', '#goodvibes'],
+  TRAVEL: ['#travel', '#tourism', '#goodvibes'],
+  EDUCATION: ['#education', '#inspiration', '#goodvibes'],
 };
 
 @Injectable()
@@ -99,14 +85,14 @@ export class NewsFetcherService {
 
   private readonly botTopicIndex = new Map<string, number>();
 
-  /** Full topic rotation — same list for every bot worldwide. */
+  /** Uplifting topics only — bots spread good vibes. */
   allTopics(): NewsTopic[] {
-    return ALL_TOPICS;
+    return POSITIVE_TOPICS;
   }
 
   nextTopicForBot(botId: string): NewsTopic {
     const idx = this.botTopicIndex.get(botId) ?? 0;
-    const topic = ALL_TOPICS[idx % ALL_TOPICS.length];
+    const topic = POSITIVE_TOPICS[idx % POSITIVE_TOPICS.length];
     this.botTopicIndex.set(botId, idx + 1);
     return topic;
   }
@@ -121,28 +107,28 @@ export class NewsFetcherService {
   private searchQuery(region: BotRegion, topic: NewsTopic): string {
     const place = region.name;
     const queries: Record<NewsTopic, string> = {
-      NEWS: `${place} news when:1d`,
-      POLITICS: `${place} politics when:2d`,
-      WORLD: `${place} world news when:2d`,
-      BUSINESS: `${place} business economy when:2d`,
-      TECHNOLOGY: `${place} technology when:2d`,
-      SCIENCE: `${place} science when:2d`,
-      HEALTH: `${place} health when:2d`,
-      SPORTS: `${place} sports highlights video when:2d`,
-      ENTERTAINMENT: `${place} entertainment viral video when:2d`,
-      BOLLYWOOD: `${place} Bollywood photos when:2d`,
-      HOLLYWOOD: `${place} Hollywood movies trailer when:2d`,
-      MUSIC: `${place} music video when:2d`,
-      GAMING: `${place} gaming trailer gameplay when:2d`,
-      FASHION: `${place} fashion photos when:2d`,
-      FOOD: `${place} food photos when:2d`,
-      TRAVEL: `${place} travel photos when:2d`,
-      CRIME: `${place} crime when:2d`,
-      EDUCATION: `${place} education schools when:2d`,
-      CLIMATE: `${place} climate environment when:2d`,
-      CRYPTO: `${place} cryptocurrency bitcoin when:2d`,
+      TECHNOLOGY: `${place} technology innovation launch${EXCLUDE_FROM_SEARCH} when:2d`,
+      SCIENCE: `${place} science discovery space breakthrough${EXCLUDE_FROM_SEARCH} when:2d`,
+      HEALTH: `${place} wellness fitness healthy living tips${EXCLUDE_FROM_SEARCH} when:2d`,
+      SPORTS: `${place} sports win celebration highlights${EXCLUDE_FROM_SEARCH} when:2d`,
+      ENTERTAINMENT: `${place} entertainment feel good viral${EXCLUDE_FROM_SEARCH} when:2d`,
+      BOLLYWOOD: `${place} Bollywood celebration photos${EXCLUDE_FROM_SEARCH} when:2d`,
+      HOLLYWOOD: `${place} Hollywood movies trailer premiere${EXCLUDE_FROM_SEARCH} when:2d`,
+      MUSIC: `${place} music festival concert video${EXCLUDE_FROM_SEARCH} when:2d`,
+      GAMING: `${place} gaming fun trailer gameplay${EXCLUDE_FROM_SEARCH} when:2d`,
+      FASHION: `${place} fashion style photos${EXCLUDE_FROM_SEARCH} when:2d`,
+      FOOD: `${place} food recipes delicious photos${EXCLUDE_FROM_SEARCH} when:2d`,
+      TRAVEL: `${place} travel beautiful destinations photos${EXCLUDE_FROM_SEARCH} when:2d`,
+      EDUCATION: `${place} students achievement inspiration${EXCLUDE_FROM_SEARCH} when:2d`,
     };
     return queries[topic];
+  }
+
+  /** Reject negative, political, or distressing headlines before posting. */
+  isPositiveContent(title: string, snippet = ''): boolean {
+    const text = `${title} ${snippet}`.trim();
+    if (!text) return false;
+    return !NEGATIVE_HEADLINE.test(text);
   }
 
   async fetchForRegion(
@@ -161,6 +147,7 @@ export class NewsFetcherService {
       // Prefer RSS items that already carry thumbnails (fast path).
       for (const item of items) {
         if (!item.title || !item.link) continue;
+        if (!this.isPositiveContent(item.title, item.contentSnippet ?? '')) continue;
         if (this.extractMediaFromItem(item).length === 0) continue;
         const parsed = await this.buildNewsItem(item, region, chosenTopic);
         if (parsed?.media.length) return parsed;
@@ -168,8 +155,9 @@ export class NewsFetcherService {
 
       // Fetch article pages for a few candidates to pull og:image / video.
       const mediaCandidates: RealNewsItem[] = [];
-      for (const item of items.slice(0, 6)) {
+      for (const item of items.slice(0, 8)) {
         if (!item.title || !item.link) continue;
+        if (!this.isPositiveContent(item.title, item.contentSnippet ?? '')) continue;
         const parsed = await this.buildNewsItem(item, region, chosenTopic);
         if (parsed?.media.length) mediaCandidates.push(parsed);
       }
@@ -177,9 +165,10 @@ export class NewsFetcherService {
         return mediaCandidates[Math.floor(Math.random() * mediaCandidates.length)];
       }
 
-      // Last resort: text-only post from the newest item.
-      for (const item of items.slice(0, 3)) {
+      // Positive text-only fallback (rare).
+      for (const item of items.slice(0, 5)) {
         if (!item.title || !item.link) continue;
+        if (!this.isPositiveContent(item.title, item.contentSnippet ?? '')) continue;
         const parsed = await this.buildNewsItem(item, region, chosenTopic);
         if (parsed) return parsed;
       }
@@ -210,8 +199,10 @@ export class NewsFetcherService {
       item.contentSnippet ?? item.summary ?? item.content ?? '',
     ).slice(0, 280);
 
+    if (!this.isPositiveContent(title, snippet)) return null;
+
     const regionTag = `#${region.name.replace(/\s+/g, '')}`;
-    const tags = [...TOPIC_TAGS[topic], regionTag, '#latest'].join(' ');
+    const tags = [...TOPIC_TAGS[topic], regionTag, '#goodvibes'].join(' ');
     let content = this.composePostBody(title, snippet);
     content = `${content}\n\n${tags}`;
     content = this.trimWords(content, MAX_POST_WORDS);

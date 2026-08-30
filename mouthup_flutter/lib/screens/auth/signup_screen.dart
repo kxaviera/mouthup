@@ -97,7 +97,7 @@ class _SignupScreenState extends State<SignupScreen> {
             const SizedBox(height: 24),
             const Text('Create account', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.text)),
             const SizedBox(height: 8),
-            const Text('Sign up — you\'ll get a unique permanent username', style: TextStyle(color: AppColors.textMuted)),
+            const Text('Sign up with email — you\'ll pick a username and screen name next', style: TextStyle(color: AppColors.textMuted)),
             const SizedBox(height: 32),
             TextField(
               controller: _email,

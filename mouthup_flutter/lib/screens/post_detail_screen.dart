@@ -125,6 +125,22 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isAuthor) ...[
+              if (post.isListing)
+                ListTile(
+                  leading: Icon(post.isOpen ? Icons.lock_outline : Icons.lock_open_outlined, color: AppColors.text),
+                  title: Text(
+                    post.isOpen ? 'Mark as closed' : 'Mark as open',
+                    style: const TextStyle(color: AppColors.text),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    final error = await app.toggleListingStatus(post.id);
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(error ?? (post.isOpen ? 'Listing closed' : 'Listing reopened'))),
+                    );
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.edit_outlined, color: AppColors.text),
                 title: const Text('Edit post', style: TextStyle(color: AppColors.text)),
@@ -269,6 +285,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     },
                     onShare: () => sharePost(context, post),
                     onAuthorTap: () => openUserProfile(context, app, post.author),
+                    onChat: post.author == app.nickname
+                        ? null
+                        : () => openDirectChat(context, app, post.author, postId: post.id),
                     commentCount: postComments.length,
                   ),
                   if (postComments.isEmpty)

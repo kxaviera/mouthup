@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { deletePost, getStoredToken, searchPosts } from '@/lib/api';
+import { connectAdminRealtime, disconnectAdminRealtime } from '@/lib/realtime';
 
 const POLL_MS = 10_000;
 
@@ -61,18 +62,33 @@ export default function PostsClient() {
   useEffect(() => {
     if (!getStoredToken()) return;
 
+    const token = getStoredToken();
+    if (token) {
+      connectAdminRealtime(token, {
+        onRefresh: () => void loadPosts(queryRef.current, true),
+      });
+    }
+
     const tick = () => {
       if (document.visibilityState === 'hidden') return;
       void loadPosts(queryRef.current, true);
     };
 
     const id = window.setInterval(tick, POLL_MS);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearInterval(id);
+      disconnectAdminRealtime();
+    };
   }, [loadPosts]);
 
   async function handleDelete(id: string) {
-    await deletePost(id);
-    setPosts((prev) => prev.filter((p) => p.id !== id));
+    if (!window.confirm('Delete this post permanently?')) return;
+    try {
+      await deletePost(id);
+      setPosts((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete post');
+    }
   }
 
   return (

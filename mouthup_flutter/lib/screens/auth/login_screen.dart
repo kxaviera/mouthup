@@ -34,7 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _email.text.trim();
     final password = _password.text;
     if (email.isEmpty) {
-      _showMessage('Enter your email');
+      _showMessage('Enter your email or username');
       return;
     }
     setState(() => _loading = true);
@@ -100,13 +100,17 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 40),
             const Text('Welcome back', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.text)),
             const SizedBox(height: 8),
-            const Text('Login to your anonymous feed', style: TextStyle(color: AppColors.textMuted)),
+            const Text('Sign in with email or username', style: TextStyle(color: AppColors.textMuted)),
             const SizedBox(height: 32),
             TextField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
               style: const TextStyle(color: AppColors.text),
-              decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.email_outlined, color: AppColors.textDim)),
+              decoration: const InputDecoration(
+                hintText: 'Email or username',
+                prefixIcon: Icon(Icons.person_outline, color: AppColors.textDim),
+              ),
             ),
             const SizedBox(height: 14),
             TextField(
@@ -147,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ],
-            if (kDebugMode) ...[
+            if (kDebugMode || kIsWeb) ...[
               const SizedBox(height: 16),
               OutlinedButton(
                 onPressed: _loading ? null : _loginAsDemo,
@@ -159,14 +163,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: Column(
                   children: [
-                    Text('Continue as ${DemoAccount.username}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    Text('Preview app as ${DemoAccount.username}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                     const SizedBox(height: 2),
-                    Text('Demo account · no sign-up needed', style: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.9), fontSize: 11)),
+                    Text(
+                      kIsWeb ? 'Offline UI preview · no API needed' : 'Demo account · no sign-up needed',
+                      style: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.9), fontSize: 11),
+                    ),
                   ],
                 ),
               ),
             ],
-            if (kDebugMode) ...[
+            if (kDebugMode || kIsWeb) ...[
               const SizedBox(height: 12),
               Text(
                 'Or use ${DemoAccount.email} / ${DemoAccount.password}',

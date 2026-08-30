@@ -9,43 +9,35 @@ class TermsScreen extends StatelessWidget {
   static const _sections = [
     (
       '1. Acceptance',
-      'By using MouthUp you agree to these terms. MouthUp is an anonymous social platform for sharing thoughts and connecting through direct messages.',
+      'By using MouthUp you agree to these terms. MouthUp is a local marketplace and community platform for buying, selling, renting, swapping, and offering services.',
     ),
     (
-      '2. Equal space — no popularity game',
-      'MouthUp does not show follower counts, like counts, or view counts on posts. Everyone is treated the same in the feed. There is no pressure to chase big numbers or compete for attention.',
+      '2. Public profiles',
+      'Your username is your public identity on MouthUp. It is assigned once and cannot be changed. Be honest in listings and respectful in messages.',
     ),
     (
-      '3. Organic feed',
-      'Your feed is chronological and transparent. We do not use hidden engagement algorithms to boost or bury posts. What you see is based on time and what you follow — not secret ranking systems.',
+      '3. Listings & transactions',
+      'Sellers and service providers are responsible for the accuracy of their listings. MouthUp facilitates discovery and messaging — we are not a party to transactions between users.',
     ),
     (
-      '4. Anonymous use',
-      'Your username is assigned once and cannot be changed. Do not attempt to identify other users or share personal information that could deanonymize yourself or others.',
+      '4. Acceptable content',
+      'Do not post illegal items, scams, counterfeit goods, or sexually explicit content. Report suspicious listings or harassment using in-app tools.',
     ),
     (
-      '5. Acceptable content',
-      'You may share opinions, politics, news, entertainment, and everyday posts freely. Pornographic and sexually explicit content is prohibited and will be removed.',
+      '5. Conduct',
+      'Do not harass, threaten, spam, or impersonate others. Block users you do not wish to interact with. MouthUp is not professional legal, medical, or financial advice.',
     ),
     (
-      '6. Regional & translated content',
-      'Some automated news posts may appear in other languages. Use the Translate option on any post to read it in your language.',
-    ),
-    (
-      '7. Conduct',
-      'Do not harass, threaten, spam, or impersonate others. Block users you do not wish to interact with. MouthUp is peer support — not professional medical or legal advice.',
-    ),
-    (
-      '8. Your content',
+      '6. Your content',
       'You retain ownership of what you post. By posting, you grant MouthUp a license to display your content within the app. You are responsible for what you share.',
     ),
     (
-      '9. Account & data',
+      '7. Account & data',
       'You may delete your account at any time from Profile. Deletion removes your data from this device session. We may update these terms; continued use means acceptance.',
     ),
     (
-      '10. Disclaimer',
-      'MouthUp is provided "as is" without warranties. We are not liable for user-generated content or interactions between users.',
+      '8. Disclaimer',
+      'MouthUp is provided "as is" without warranties. We are not liable for user-generated content, listings, or interactions between users.',
     ),
   ];
 

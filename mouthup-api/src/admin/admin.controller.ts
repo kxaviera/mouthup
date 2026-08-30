@@ -64,6 +64,16 @@ export class AdminController {
     return this.admin.unbanUser(id);
   }
 
+  @Patch('users/:id/verify')
+  verify(@Param('id') id: string) {
+    return this.admin.verifyUser(id);
+  }
+
+  @Patch('users/:id/unverify')
+  unverify(@Param('id') id: string) {
+    return this.admin.unverifyUser(id);
+  }
+
   @Delete('posts/:id')
   deletePost(@Param('id') id: string) {
     return this.admin.deletePost(id);

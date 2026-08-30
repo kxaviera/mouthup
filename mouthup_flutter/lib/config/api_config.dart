@@ -1,9 +1,13 @@
+import 'package:flutter/foundation.dart';
+
 class ApiConfig {
-  /// Production: flutter build web --dart-define=API_URL=https://api.yourdomain.com/api/v1
-  static const baseUrl = String.fromEnvironment(
-    'API_URL',
-    defaultValue: 'http://localhost:3000/api/v1',
-  );
+  /// Override: flutter run --dart-define=API_URL=https://api.yourdomain.com/api/v1
+  static String get baseUrl {
+    const fromEnv = String.fromEnvironment('API_URL');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    if (kIsWeb) return 'https://api.ogmario64.fun/api/v1';
+    return 'http://localhost:3000/api/v1';
+  }
 
   /// Optional: flutter build apk --dart-define=APP_URL=https://app.yourdomain.com
   static const appUrl = String.fromEnvironment('APP_URL', defaultValue: '');

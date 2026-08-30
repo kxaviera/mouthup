@@ -64,10 +64,15 @@ function StatCard({ label, value }: { label: string; value: number }) {
   );
 }
 
-export function StatGrid({ stats }: { stats: { users: number; posts: number; pendingReports: number; messages: number } }) {
+export function StatGrid({
+  stats,
+}: {
+  stats: { users: number; posts: number; pendingReports: number; messages: number; verifiedUsers?: number };
+}) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       <StatCard label="Users" value={stats.users} />
+      <StatCard label="Verified" value={stats.verifiedUsers ?? 0} />
       <StatCard label="Posts" value={stats.posts} />
       <StatCard label="Pending Reports" value={stats.pendingReports} />
       <StatCard label="Messages" value={stats.messages} />

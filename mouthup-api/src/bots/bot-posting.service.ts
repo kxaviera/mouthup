@@ -52,7 +52,7 @@ export class BotPostingService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    this.logger.log(`${count} bots ready — staggered real-time news posting active`);
+    this.logger.log(`${count} bots ready — positive-vibes posting active`);
     this.scheduleNext();
   }
 
@@ -128,6 +128,15 @@ export class BotPostingService implements OnModuleInit, OnModuleDestroy {
 
     const topic = this.news.nextTopicForBot(bot.id);
     let item = await this.news.fetchForRegion(region, topic, bot.id);
+
+    // Retry with another uplifting topic if the first fetch found nothing suitable.
+    if (!item) {
+      for (let i = 0; i < 3; i++) {
+        const altTopic = this.news.nextTopicForBot(bot.id);
+        item = await this.news.fetchForRegion(region, altTopic, bot.id);
+        if (item) break;
+      }
+    }
     if (!item) return false;
 
     if (item.media.length === 0) {
@@ -143,7 +152,7 @@ export class BotPostingService implements OnModuleInit, OnModuleDestroy {
     if (exists) return false;
 
     try {
-      await this.posts.create(bot.id, item.content, item.media, item.sourceUrl);
+      await this.posts.create(bot.id, item.content, item.media, item.sourceUrl, 'GOOD');
       this.logger.log(`Posted [${region.name}/${item.topic}] ${item.title.slice(0, 50)}… (${item.media.length} media)`);
       return true;
     } catch (err) {

@@ -13,6 +13,7 @@ import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { DemoSeedService } from './demo-seed.service';
 import { EmailService } from '../email/email.service';
 import { FirebaseService } from '../firebase/firebase.service';
 import {
@@ -37,6 +38,7 @@ export class AuthController {
     private readonly email: EmailService,
     private readonly firebase: FirebaseService,
     private readonly config: ConfigService,
+    private readonly demoSeed: DemoSeedService,
   ) {}
 
   private shouldAutoVerify(): boolean {
@@ -103,12 +105,27 @@ export class AuthController {
     return { message: 'Verification code sent', ...this.devCode(code) };
   }
 
+  @Post('demo')
+  @HttpCode(200)
+  async demoLogin() {
+    if (!this.demoSeed.isEnabled()) {
+      throw new BadRequestException('Demo login is disabled');
+    }
+    const user = await this.demoSeed.ensureDemoUser();
+    if (user.bannedAt) throw new UnauthorizedException('Account suspended');
+    return this.auth.issueTokens(this.auth.toAuthUser(user));
+  }
+
   @Post('login')
   @HttpCode(200)
   async login(@Body() dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase() },
-    });
+    const login = dto.login.trim();
+    const isEmail = login.includes('@');
+    const user = isEmail
+      ? await this.prisma.user.findUnique({ where: { email: login.toLowerCase() } })
+      : await this.prisma.user.findFirst({
+          where: { username: { equals: login, mode: 'insensitive' } },
+        });
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }

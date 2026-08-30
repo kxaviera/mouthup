@@ -16,12 +16,13 @@ void openUserProfile(BuildContext context, AppState app, String username) {
   context.push('/user/${Uri.encodeComponent(username)}');
 }
 
-void openDirectChat(BuildContext context, AppState app, String username) {
+void openDirectChat(BuildContext context, AppState app, String username, {String? postId}) {
   if (!app.canDm(username)) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Cannot message this user')),
     );
     return;
   }
-  context.push('/messages/chat?peer=${Uri.encodeComponent(username)}');
+  final params = {'peer': username, if (postId != null) 'postId': postId};
+  context.push(Uri(path: '/messages/chat', queryParameters: params).toString());
 }

@@ -72,7 +72,8 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message ?? 'Request failed');
+    const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+    throw new Error(msg ?? 'Request failed');
   }
 
   return res.json() as Promise<T>;
@@ -81,14 +82,14 @@ export async function apiFetch<T>(
 export async function login(email: string, password: string) {
   const res = await apiFetch<AuthTokens & { user: { role: string } }>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ login: email, password }),
   });
   storeTokens(res.accessToken, res.refreshToken);
   return res;
 }
 
 export async function getDashboard() {
-  return apiFetch<{ users: number; posts: number; pendingReports: number; messages: number }>(
+  return apiFetch<{ users: number; posts: number; pendingReports: number; messages: number; verifiedUsers: number }>(
     '/admin/dashboard',
   );
 }
@@ -121,15 +122,30 @@ export async function searchUsers(q: string) {
       id: string;
       email: string;
       username: string | null;
+      screenName: string | null;
       bannedAt: string | null;
+      banReason: string | null;
       createdAt: string;
       signupIp: string | null;
       signupCountry: string | null;
       signupRegion: string | null;
       signupCity: string | null;
       authProvider: string | null;
+      isVerified: boolean;
     }[]
   >(`/admin/users?q=${encodeURIComponent(q)}`);
+}
+
+export async function verifyUser(id: string) {
+  return apiFetch<{ id: string; username: string | null; isVerified: boolean }>(`/admin/users/${id}/verify`, {
+    method: 'PATCH',
+  });
+}
+
+export async function unverifyUser(id: string) {
+  return apiFetch<{ id: string; username: string | null; isVerified: boolean }>(`/admin/users/${id}/unverify`, {
+    method: 'PATCH',
+  });
 }
 
 export async function banUser(id: string, reason: string) {

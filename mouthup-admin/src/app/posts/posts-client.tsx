@@ -196,7 +196,6 @@ export default function PostsClient() {
 
                 <p className="mt-1 text-sm text-zinc-500">
                   {p.author.username ?? p.author.email}
-                  {p.author.isBot ? ' · bot' : ''}
                   {location ? ` · ${location}` : ''}
                   {' · '}
                   {new Date(p.createdAt).toLocaleString()}

@@ -1,50 +1,13 @@
 import { PrismaClient, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { BOT_REGIONS } from '../src/bots/bot-regions';
 
 const prisma = new PrismaClient();
 
-async function seedBots() {
-  if (process.env.SEED_BOTS === 'false') return;
-
-  let created = 0;
-
-  for (const region of BOT_REGIONS) {
-    const email = `bot-${region.slug}@mouthup-bots.local`;
-    const existing = await prisma.user.findUnique({ where: { email } });
-
-    if (existing) {
-      await prisma.user.update({
-        where: { email },
-        data: {
-          isBot: true,
-          passwordHash: null,
-          region: region.name,
-          username: region.username,
-          emailVerified: true,
-          onboardingDone: true,
-          avatarSeed: region.slug,
-        },
-      });
-    } else {
-      await prisma.user.create({
-        data: {
-          email,
-          passwordHash: null,
-          username: region.username,
-          usernameLocked: true,
-          emailVerified: true,
-          onboardingDone: true,
-          isBot: true,
-          region: region.name,
-          avatarSeed: region.slug,
-        },
-      });
-      created++;
-    }
+async function purgeLegacyBots() {
+  const result = await prisma.user.deleteMany({ where: { isBot: true } });
+  if (result.count > 0) {
+    console.log(`Removed ${result.count} legacy bot accounts`);
   }
-
-  console.log(`Bot accounts: ${BOT_REGIONS.length} regions (${created} new)`);
 }
 
 async function main() {
@@ -66,7 +29,7 @@ async function main() {
     create: {
       email: adminEmail,
       passwordHash: adminHash,
-      username: 'MouthUpAdmin',
+      username: 'ISZIAdmin',
       usernameLocked: true,
       emailVerified: true,
       onboardingDone: true,
@@ -74,7 +37,7 @@ async function main() {
     },
   });
 
-  await seedBots();
+  await purgeLegacyBots();
 
   console.log('Seed complete');
   if (process.env.NODE_ENV !== 'production') {
@@ -82,7 +45,6 @@ async function main() {
   } else {
     console.log(`Admin account ready: ${adminEmail}`);
   }
-  console.log(`${BOT_REGIONS.length} regional news bots configured`);
 }
 
 main()

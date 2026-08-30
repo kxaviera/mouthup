@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../utils/post_translate.dart';
 
-/// Tap to translate post text (helps with regional / bot news in other languages).
+/// Tap to translate post text (helps with listings in other languages).
 class PostTranslateLink extends StatelessWidget {
   const PostTranslateLink({super.key, required this.content});
 

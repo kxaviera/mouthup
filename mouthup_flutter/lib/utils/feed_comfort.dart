@@ -1,7 +1,7 @@
 import '../constants/moods.dart';
 import '../models/post.dart';
 
-/// Hashtags that signal uplifting bot / comfort-feed content.
+/// Mood-based feed filters (comfort mode, topic shields).
 const positiveHashtags = {
   'goodvibes',
   'sports',

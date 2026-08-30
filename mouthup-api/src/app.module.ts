@@ -18,7 +18,6 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
 import { AdminModule } from './admin/admin.module';
 import { ModerationModule } from './moderation/moderation.module';
-import { BotsModule } from './bots/bots.module';
 import { MediaModule } from './media/media.module';
 import { ServiceCatalogModule } from './service-catalog/service-catalog.module';
 import { HealthController } from './health.controller';
@@ -51,7 +50,6 @@ import { HealthController } from './health.controller';
     ReportsModule,
     AdminModule,
     ModerationModule,
-    BotsModule,
     MediaModule,
     ServiceCatalogModule,
   ],

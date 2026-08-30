@@ -5,7 +5,7 @@ class ApiConfig {
   static String get baseUrl {
     const fromEnv = String.fromEnvironment('API_URL');
     if (fromEnv.isNotEmpty) return fromEnv;
-    if (kIsWeb) return 'https://api.ogmario64.fun/api/v1';
+    if (kIsWeb || kReleaseMode) return 'https://api.ogmario64.fun/api/v1';
     return 'http://localhost:3000/api/v1';
   }
 

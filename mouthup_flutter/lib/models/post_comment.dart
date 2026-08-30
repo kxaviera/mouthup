@@ -27,29 +27,3 @@ class PostComment {
     );
   }
 }
-
-List<PostComment> mockComments() {
-  return [
-    PostComment(
-      id: 'c1',
-      postId: '1',
-      author: 'SilentOwl',
-      text: 'Same here, work has been rough this week.',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 8)),
-    ),
-    PostComment(
-      id: 'c2',
-      postId: '1',
-      author: 'CalmRiver',
-      text: 'Hang in there — tomorrow is a new day.',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
-    ),
-    PostComment(
-      id: 'c3',
-      postId: '2',
-      author: 'NightWalker',
-      text: 'The red dress is fire 🔥',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 20)),
-    ),
-  ];
-}

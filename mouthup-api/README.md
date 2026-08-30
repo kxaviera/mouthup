@@ -36,7 +36,7 @@ Health: `http://localhost:3000/api/v1/health`
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@mouthup.app | admin123change |
+| Admin | admin@mouthup.app | Set `ADMIN_PASSWORD` in `.env` before seed (min 12 chars) |
 
 ## API modules
 

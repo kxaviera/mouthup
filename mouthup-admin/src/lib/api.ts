@@ -178,6 +178,8 @@ export async function searchPosts(q: string, limit = 100) {
       price: string | null;
       currency: string;
       rentPeriod: string | null;
+      swapFor: string | null;
+      requestedProfession: string | null;
       location: string | null;
       viewCount: number;
       createdAt: string;

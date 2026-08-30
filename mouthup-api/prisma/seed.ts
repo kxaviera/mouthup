@@ -3,12 +3,10 @@ import * as bcrypt from 'bcrypt';
 import { BOT_REGIONS } from '../src/bots/bot-regions';
 
 const prisma = new PrismaClient();
-const BOT_PASSWORD = 'bot-internal-no-login';
 
 async function seedBots() {
   if (process.env.SEED_BOTS === 'false') return;
 
-  const passwordHash = await bcrypt.hash(BOT_PASSWORD, 10);
   let created = 0;
 
   for (const region of BOT_REGIONS) {
@@ -20,6 +18,7 @@ async function seedBots() {
         where: { email },
         data: {
           isBot: true,
+          passwordHash: null,
           region: region.name,
           username: region.username,
           emailVerified: true,
@@ -31,7 +30,7 @@ async function seedBots() {
       await prisma.user.create({
         data: {
           email,
-          passwordHash,
+          passwordHash: null,
           username: region.username,
           usernameLocked: true,
           emailVerified: true,
@@ -50,9 +49,17 @@ async function seedBots() {
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@mouthup.app';
-  const adminPassword = process.env.ADMIN_PASSWORD ?? 'admin123change';
+  const adminPassword = process.env.ADMIN_PASSWORD;
 
-  const adminHash = await bcrypt.hash(adminPassword, 12);
+  if (!adminPassword || adminPassword.length < 12) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ADMIN_PASSWORD must be set (min 12 chars) before seeding in production');
+    }
+    console.warn('WARNING: Using dev-only admin password. Set ADMIN_PASSWORD before production deploy.');
+  }
+
+  const resolvedPassword = adminPassword ?? 'dev-only-change-me';
+  const adminHash = await bcrypt.hash(resolvedPassword, 12);
   await prisma.user.upsert({
     where: { email: adminEmail },
     update: {},
@@ -71,7 +78,7 @@ async function main() {
 
   console.log('Seed complete');
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`Admin: ${adminEmail} / ${adminPassword}`);
+    console.log(`Admin: ${adminEmail} / ${resolvedPassword}`);
   } else {
     console.log(`Admin account ready: ${adminEmail}`);
   }

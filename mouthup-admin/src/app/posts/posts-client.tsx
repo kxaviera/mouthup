@@ -18,6 +18,8 @@ type ListingRow = {
   price: string | null;
   currency: string;
   rentPeriod: string | null;
+  swapFor: string | null;
+  requestedProfession: string | null;
   location: string | null;
   viewCount: number;
   createdAt: string;
@@ -203,6 +205,13 @@ export default function PostsClient() {
 
                 {p.content.trim() && p.content.trim() !== listingHeadline(p) ? (
                   <p className="mt-2 whitespace-pre-wrap break-words text-sm text-zinc-300">{p.content}</p>
+                ) : null}
+
+                {p.listingType === 'SWAP' && p.swapFor?.trim() ? (
+                  <p className="mt-1 text-sm text-zinc-400">Swap for: {p.swapFor}</p>
+                ) : null}
+                {p.listingType === 'SERVICE_REQUEST' && p.requestedProfession ? (
+                  <p className="mt-1 text-sm text-zinc-400">Profession needed: {p.requestedProfession}</p>
                 ) : null}
 
                 {p.media?.length ? (

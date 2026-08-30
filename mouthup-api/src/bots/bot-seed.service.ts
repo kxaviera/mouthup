@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { BOT_REGIONS } from './bot-regions';
-
-const BOT_PASSWORD = 'bot-internal-no-login';
 
 @Injectable()
 export class BotSeedService {
@@ -12,7 +9,6 @@ export class BotSeedService {
   constructor(private readonly prisma: PrismaService) {}
 
   async seedBots() {
-    const passwordHash = await bcrypt.hash(BOT_PASSWORD, 10);
     let created = 0;
     let updated = 0;
 
@@ -25,6 +21,7 @@ export class BotSeedService {
           where: { email },
           data: {
             isBot: true,
+            passwordHash: null,
             region: region.name,
             username: region.username,
             emailVerified: true,
@@ -37,7 +34,7 @@ export class BotSeedService {
         await this.prisma.user.create({
           data: {
             email,
-            passwordHash,
+            passwordHash: null,
             username: region.username,
             usernameLocked: true,
             emailVerified: true,

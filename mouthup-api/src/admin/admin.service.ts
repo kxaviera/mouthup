@@ -273,68 +273,41 @@ export class AdminService {
 
 
   searchPosts(q: string, limit = 100) {
-
     const trimmed = q.trim();
+    const listingFilter = { listingType: { not: null } };
 
     return this.prisma.post.findMany({
-
       where: trimmed
-
         ? {
-
             deletedAt: null,
-
+            ...listingFilter,
             OR: [
-
               { content: { contains: trimmed, mode: 'insensitive' } },
-
               { title: { contains: trimmed, mode: 'insensitive' } },
-
               { location: { contains: trimmed, mode: 'insensitive' } },
-
             ],
-
           }
-
-        : { deletedAt: null },
-
+        : { deletedAt: null, ...listingFilter },
       take: limit,
-
       orderBy: { createdAt: 'desc' },
-
       select: {
-
         id: true,
-
         title: true,
-
         content: true,
-
         listingType: true,
-
         listingStatus: true,
-
         price: true,
-
         currency: true,
-
         rentPeriod: true,
-
+        swapFor: true,
+        requestedProfession: true,
         location: true,
-
         viewCount: true,
-
         createdAt: true,
-
         author: { select: { username: true, email: true, isBot: true, city: true } },
-
         media: { select: { type: true, url: true }, orderBy: { sortOrder: 'asc' }, take: 4 },
-
       },
-
     });
-
   }
-
 }
 

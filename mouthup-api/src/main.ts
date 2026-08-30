@@ -18,14 +18,16 @@ async function bootstrap() {
   app.setGlobalPrefix(config.get('API_PREFIX', 'api/v1'));
   app.useWebSocketAdapter(new IoAdapter(app));
 
-  const devWebOrigins = [
-    'http://localhost:57400',
-    'http://localhost:57401',
-    'http://127.0.0.1:57400',
-    'http://127.0.0.1:57401',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-  ];
+  const devWebOrigins = isProd
+    ? []
+    : [
+        'http://localhost:57400',
+        'http://localhost:57401',
+        'http://127.0.0.1:57400',
+        'http://127.0.0.1:57401',
+        'http://localhost:3001',
+        'http://127.0.0.1:3001',
+      ];
 
   const origins = [
     config.get('APP_URL'),

@@ -42,6 +42,7 @@ export class AuthController {
   private shouldAutoVerify(): boolean {
     if (this.config.get('AUTO_VERIFY_EMAIL') === 'true') return true;
     if (this.config.get('AUTO_VERIFY_EMAIL') === 'false') return false;
+    if (this.config.get('NODE_ENV') === 'production') return false;
     return !this.email.isConfigured();
   }
 
@@ -114,6 +115,9 @@ export class AuthController {
           where: { username: { equals: login, mode: 'insensitive' } },
         });
     if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    if (user.isBot) {
       throw new UnauthorizedException('Invalid credentials');
     }
 

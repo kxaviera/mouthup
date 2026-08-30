@@ -41,4 +41,7 @@ class SocialProfile {
   int get reviewCount => reviews.length;
 }
 
-String avatarUrlForUser(String username) => 'https://picsum.photos/seed/${Uri.encodeComponent(username)}/200/200';
+String avatarUrlForUser(String username, {String? displayName}) {
+  final label = (displayName?.trim().isNotEmpty == true ? displayName!.trim() : username).replaceAll('@', '');
+  return 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(label)}&size=256&background=1a1a1a&color=ffffff&bold=true&format=png';
+}

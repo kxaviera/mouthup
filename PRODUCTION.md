@@ -38,18 +38,17 @@ npm install
 npm run dev
 ```
 
-### 3. Flutter app (still on mock data until Phase 4)
+### 3. Flutter app
 ```bash
 cd mouthup_flutter
-flutter run -d chrome --web-port=57400
+flutter run -d chrome --dart-define=API_URL=http://localhost:3000/api/v1
 ```
 
 ## Default accounts
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@mouthup.app | admin123change |
-| Demo user | demo@mouthup.app | demo123 |
+| Admin | admin@mouthup.app | Set via `ADMIN_PASSWORD` in API `.env` before seed |
 
 ## Build order (remaining)
 

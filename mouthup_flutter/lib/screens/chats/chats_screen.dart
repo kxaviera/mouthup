@@ -59,7 +59,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
           children: [
             Container(
               decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border))),
-              padding: EdgeInsets.fromLTRB(widget.inTabShell ? 16 : 4, 4, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
               child: Row(
                 children: [
                   if (!widget.inTabShell)
@@ -96,7 +96,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
   Widget _conversationTile(BuildContext context, AppState app, DmConversation c) {
     return ListTile(
       onTap: () => context.push('/messages/chat?peer=${Uri.encodeComponent(c.peerNickname)}'),
-      leading: UserAvatar(name: c.peerNickname, radius: 24),
+      leading: UserAvatar(
+        name: c.peerNickname,
+        imageUrl: app.avatarForUser(c.peerNickname),
+        radius: 24,
+      ),
       title: Text(c.peerNickname, style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w700)),
       subtitle: Text(
         c.lastMessage,

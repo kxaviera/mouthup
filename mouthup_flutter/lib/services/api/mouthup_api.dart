@@ -6,6 +6,7 @@ import '../../models/app_notification.dart';
 import '../../models/direct_message.dart';
 import '../../models/post.dart';
 import '../../models/post_comment.dart';
+import '../../models/service_catalog_item.dart';
 import '../token_storage.dart';
 import 'api_exception.dart';
 
@@ -76,7 +77,6 @@ class MouthUpApi {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         if (!options.path.contains('/auth/login') &&
-            !options.path.contains('/auth/demo') &&
             !options.path.contains('/auth/register') &&
             !options.path.contains('/auth/firebase') &&
             !options.path.contains('/auth/refresh')) {
@@ -127,9 +127,9 @@ class MouthUpApi {
     }
   }
 
-  Future<T> _get<T>(String path, T Function(dynamic) parse) async {
+  Future<T> _get<T>(String path, T Function(dynamic) parse, {Map<String, dynamic>? queryParameters}) async {
     try {
-      final res = await _dio.get(path);
+      final res = await _dio.get(path, queryParameters: queryParameters);
       return parse(res.data);
     } on DioException catch (e) {
       throw _mapError(e);
@@ -192,17 +192,6 @@ class MouthUpApi {
   }
 
   // — Auth —
-
-  Future<AuthResult> loginAsDemo() async {
-    return _post('/auth/demo', {}, (data) {
-      final map = data as Map<String, dynamic>;
-      return AuthResult(
-        accessToken: map['accessToken'] as String,
-        refreshToken: map['refreshToken'] as String,
-        user: SessionUser.fromJson(map['user'] as Map<String, dynamic>),
-      );
-    });
-  }
 
   Future<AuthResult> login(String login, String password) async {
     return _post('/auth/login', {'login': login, 'password': password}, (data) {
@@ -362,12 +351,16 @@ class MouthUpApi {
     String? q,
     String? listingType,
     String? city,
+    String? feedMode,
+    int? radiusKm,
   }) async {
     final params = <String, String>{};
     if (hashtag != null) params['hashtag'] = hashtag.replaceFirst('#', '');
     if (q != null && q.isNotEmpty) params['q'] = q;
     if (listingType != null) params['listingType'] = listingType;
     if (city != null && city.isNotEmpty) params['city'] = city;
+    if (feedMode != null && feedMode.isNotEmpty) params['feedMode'] = feedMode;
+    if (radiusKm != null) params['radiusKm'] = '$radiusKm';
     final query = params.isEmpty ? '' : '?${params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
     return _get('/posts$query', (data) {
       final items = (data as Map<String, dynamic>)['items'] as List;
@@ -394,6 +387,7 @@ class MouthUpApi {
     String? rentPeriod,
     String? swapFor,
     String? location,
+    String? requestedProfession,
     List<Map<String, String>> media = const [],
   }) async {
     return _post('/posts', {
@@ -405,6 +399,7 @@ class MouthUpApi {
       if (rentPeriod != null) 'rentPeriod': rentPeriod,
       if (swapFor != null) 'swapFor': swapFor,
       if (location != null) 'location': location,
+      if (requestedProfession != null) 'requestedProfession': requestedProfession,
       if (media.isNotEmpty) 'media': media,
     }, (data) => MouthUpPost.fromJson(data as Map<String, dynamic>));
   }
@@ -538,4 +533,42 @@ class MouthUpApi {
   Future<void> sendMessage(String peer, String content, {String type = 'TEXT'}) {
     return _post('/messages/${Uri.encodeComponent(peer)}', {'content': content, 'type': type}, (_) {});
   }
+
+  // — Service catalog —
+
+  Future<List<ServiceCatalogItem>> searchServiceCatalog({
+    String? q,
+    String? profession,
+    String? city,
+    int limit = 30,
+  }) async {
+    return _get('/service-catalog/search', (data) {
+      final items = (data as Map<String, dynamic>)['items'] as List;
+      return items.map((e) => ServiceCatalogItem.fromJson(e as Map<String, dynamic>)).toList();
+    }, queryParameters: {
+      if (q != null && q.isNotEmpty) 'q': q,
+      if (profession != null && profession.isNotEmpty) 'profession': profession,
+      if (city != null && city.isNotEmpty) 'city': city,
+      'limit': limit,
+    });
+  }
+
+  Future<List<ServiceCatalogItem>> fetchUserServices(String username) async {
+    return _get('/service-catalog/users/${Uri.encodeComponent(username)}', (data) {
+      final items = (data as Map<String, dynamic>)['items'] as List;
+      return items.map((e) => ServiceCatalogItem.fromJson(e as Map<String, dynamic>)).toList();
+    });
+  }
+
+  Future<ServiceCatalogItem> createServiceCatalog(ServiceCatalogItem item) async {
+    return _post('/service-catalog/me', item.toCreateJson(),
+        (data) => ServiceCatalogItem.fromJson(data as Map<String, dynamic>));
+  }
+
+  Future<ServiceCatalogItem> updateServiceCatalog(String id, ServiceCatalogItem item) async {
+    return _patch('/service-catalog/me/$id', item.toCreateJson(),
+        (data) => ServiceCatalogItem.fromJson(data as Map<String, dynamic>));
+  }
+
+  Future<void> deleteServiceCatalog(String id) => _delete('/service-catalog/me/$id', (_) {});
 }

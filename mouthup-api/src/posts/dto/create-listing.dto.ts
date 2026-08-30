@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsEnum,
   IsIn,
   IsNumber,
   IsOptional,
@@ -8,6 +9,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { Profession } from '@prisma/client';
 
 class MediaItemDto {
   @IsString()
@@ -51,6 +53,10 @@ export class CreateListingDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsEnum(Profession)
+  requestedProfession?: Profession;
 
   @IsOptional()
   @IsArray()

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'mouthup_logo.dart';
 
 /// Wraps routed content in a centered phone frame when running on web.
 class MobileFrame extends StatelessWidget {
@@ -17,39 +18,26 @@ class MobileFrame extends StatelessWidget {
     const framePadding = 14.0;
     const outerRadius = 46.0;
     const innerRadius = 34.0;
-    const labelHeight = 56.0;
-    const labelGap = 20.0;
-    final outerW = phoneWidth + framePadding * 2;
-    final outerH = phoneHeight + framePadding * 2;
-    final previewW = outerW;
-    final previewH = outerH + labelHeight + labelGap;
+    const outerW = phoneWidth + framePadding * 2;
+    const outerH = phoneHeight + framePadding * 2;
 
     return ColoredBox(
       color: const Color(0xFF000000),
       child: Center(
         child: FittedBox(
           fit: BoxFit.contain,
-          child: SizedBox(
-            width: previewW,
-            height: previewH,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: 8),
-                const Text(
-                  'MouthUp',
-                  style: TextStyle(
-                    color: Color(0xFFAAAAAA),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
-                  ),
-                ),
+                const IsziWordmark(height: 20),
                 const SizedBox(height: 4),
                 const Text(
                   'Mobile preview • 390 × 844',
                   style: TextStyle(color: Color(0xFF555555), fontSize: 11),
                 ),
-                const SizedBox(height: labelGap),
+                const SizedBox(height: 16),
                 Container(
                   width: outerW,
                   height: outerH,

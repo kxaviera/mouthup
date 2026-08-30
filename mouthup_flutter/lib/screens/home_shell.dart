@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../constants/feature_flags.dart';
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 
@@ -8,6 +9,12 @@ class HomeShell extends StatelessWidget {
   const HomeShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
+
+  static const _marketTab = 0;
+  static const _searchTab = 1;
+  static const _inboxTab = 2;
+  static const _profileTab = 3;
+  static const _servicesTab = 4;
 
   void _onTabTap(int index) {
     navigationShell.goBranch(
@@ -36,8 +43,24 @@ class HomeShell extends StatelessWidget {
             height: 56,
             child: Row(
               children: [
-                Expanded(child: _TabItem(icon: Icons.storefront_outlined, selectedIcon: Icons.storefront, label: 'Market', selected: selected == 0, onTap: () => _onTabTap(0))),
-                Expanded(child: _TabItem(icon: Icons.search, selectedIcon: Icons.search, label: 'Search', selected: selected == 1, onTap: () => _onTabTap(1))),
+                Expanded(
+                  child: _TabItem(
+                    icon: Icons.storefront_outlined,
+                    selectedIcon: Icons.storefront,
+                    label: 'Market',
+                    selected: selected == _marketTab,
+                    onTap: () => _onTabTap(_marketTab),
+                  ),
+                ),
+                Expanded(
+                  child: _TabItem(
+                    icon: Icons.search,
+                    selectedIcon: Icons.search,
+                    label: 'Search',
+                    selected: selected == _searchTab,
+                    onTap: () => _onTabTap(_searchTab),
+                  ),
+                ),
                 Expanded(
                   child: InkWell(
                     onTap: () => context.push('/create-post'),
@@ -58,8 +81,35 @@ class HomeShell extends StatelessWidget {
                     ),
                   ),
                 ),
-                Expanded(child: _TabItem(icon: Icons.inbox_outlined, selectedIcon: Icons.inbox, label: 'Inbox', selected: selected == 2, badge: unreadDms > 0 ? unreadDms : null, onTap: () => _onTabTap(2))),
-                Expanded(child: _TabItem(icon: Icons.person_outline, selectedIcon: Icons.person, label: 'Profile', selected: selected == 3, onTap: () => _onTabTap(3))),
+                Expanded(
+                  child: _TabItem(
+                    icon: Icons.inbox_outlined,
+                    selectedIcon: Icons.inbox,
+                    label: 'Inbox',
+                    selected: selected == _inboxTab,
+                    badge: unreadDms > 0 ? unreadDms : null,
+                    onTap: () => _onTabTap(_inboxTab),
+                  ),
+                ),
+                Expanded(
+                  child: _TabItem(
+                    icon: Icons.person_outline,
+                    selectedIcon: Icons.person,
+                    label: 'Profile',
+                    selected: selected == _profileTab,
+                    onTap: () => _onTabTap(_profileTab),
+                  ),
+                ),
+                if (servicesMarketplaceEnabled)
+                  Expanded(
+                    child: _TabItem(
+                      icon: Icons.handyman_outlined,
+                      selectedIcon: Icons.handyman,
+                      label: 'Services',
+                      selected: selected == _servicesTab,
+                      onTap: () => _onTabTap(_servicesTab),
+                    ),
+                  ),
               ],
             ),
           ),

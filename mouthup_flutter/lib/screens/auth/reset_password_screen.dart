@@ -54,10 +54,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return ScreenWrapper(
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      scrollable: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
             IconButton(
               onPressed: () => context.go('/forgot-password'),
               icon: const Icon(Icons.arrow_back, color: AppColors.textMuted),
@@ -90,9 +90,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
             const SizedBox(height: 24),
             PrimaryButton(title: 'Update password', onPressed: _reset),
+            const SizedBox(height: 24),
           ],
         ),
-      ),
     );
   }
 }

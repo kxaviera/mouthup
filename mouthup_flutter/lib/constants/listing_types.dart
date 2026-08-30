@@ -30,6 +30,11 @@ const listingTypeOptions = [
   ListingTypeOption(id: ListingTypeId.serviceRequest, apiValue: 'SERVICE_REQUEST', label: 'Need service', emoji: '📋'),
 ];
 
+/// Marketplace listing types (no service provider types until launch).
+List<ListingTypeOption> get marketplaceListingTypes => listingTypeOptions
+    .where((t) => t.id != ListingTypeId.service && t.id != ListingTypeId.serviceRequest)
+    .toList();
+
 ListingTypeOption? listingTypeFromApi(String? value) {
   if (value == null) return null;
   for (final opt in listingTypeOptions) {

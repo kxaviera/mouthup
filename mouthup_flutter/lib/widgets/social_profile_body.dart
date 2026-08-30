@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../constants/feature_flags.dart';
 import '../models/post.dart';
 import '../models/profile_review.dart';
+import '../models/service_catalog_item.dart';
 import '../providers/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/display_name.dart';
@@ -10,6 +12,7 @@ import '../utils/profile_labels.dart';
 import '../utils/user_profile_nav.dart';
 import 'post_tile.dart';
 import 'profile_reviews_section.dart';
+import 'service_catalog_card.dart';
 import 'user_avatar.dart';
 import 'verified_badge.dart';
 
@@ -38,12 +41,28 @@ class SocialProfileBody extends StatefulWidget {
 }
 
 class _SocialProfileBodyState extends State<SocialProfileBody> with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+  late TabController _tabController;
+
+  int get _tabCount => servicesMarketplaceEnabled ? 3 : 2;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: _tabCount, vsync: this);
+    if (servicesMarketplaceEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.app.loadUserServices(widget.username);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant SocialProfileBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_tabController.length != _tabCount) {
+      _tabController.dispose();
+      _tabController = TabController(length: _tabCount, vsync: this);
+    }
   }
 
   @override
@@ -61,6 +80,7 @@ class _SocialProfileBodyState extends State<SocialProfileBody> with SingleTicker
     final social = app.socialProfile(username);
     final posts = app.postsByUser(username);
     final reviews = app.reviewsForUser(username);
+    final services = app.servicesForUser(username);
     final following = app.isFollowing(username);
 
     final avatarUrl = isSelf ? (app.profileAvatarUrl ?? info.avatarUrl) : info.avatarUrl;
@@ -214,6 +234,7 @@ class _SocialProfileBodyState extends State<SocialProfileBody> with SingleTicker
               unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
               tabs: [
                 Tab(text: 'Posts (${posts.length})'),
+                if (servicesMarketplaceEnabled) Tab(text: 'Services (${services.length})'),
                 Tab(text: 'Reviews (${reviews.length})'),
               ],
             ),
@@ -224,6 +245,8 @@ class _SocialProfileBodyState extends State<SocialProfileBody> with SingleTicker
         controller: _tabController,
         children: [
           _PostsTab(app: app, username: username, posts: posts, isSelf: isSelf),
+          if (servicesMarketplaceEnabled)
+            _ServicesTab(app: app, username: username, services: services, isSelf: isSelf),
           _ReviewsTab(reviews: reviews),
         ],
       ),
@@ -320,6 +343,106 @@ class _PostsTab extends StatelessWidget {
               );
             },
             childCount: posts.length,
+          ),
+        ),
+        const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+      ],
+    );
+  }
+}
+
+class _ServicesTab extends StatelessWidget {
+  const _ServicesTab({
+    required this.app,
+    required this.username,
+    required this.services,
+    required this.isSelf,
+  });
+
+  final AppState app;
+  final String username;
+  final List<ServiceCatalogItem> services;
+  final bool isSelf;
+
+  @override
+  Widget build(BuildContext context) {
+    final canManage = isSelf && app.isServiceProvider;
+
+    if (services.isEmpty) {
+      return CustomScrollView(
+        slivers: [
+          if (canManage)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final saved = await context.push<bool>('/services/add');
+                    if (saved == true && context.mounted) {
+                      app.invalidateUserServices(username);
+                      await app.loadUserServices(username);
+                    }
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add to catalog'),
+                ),
+              ),
+            ),
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: Text('No services listed yet', style: TextStyle(color: AppColors.textMuted))),
+          ),
+        ],
+      );
+    }
+
+    return CustomScrollView(
+      slivers: [
+        if (canManage)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final saved = await context.push<bool>('/services/add');
+                  if (saved == true && context.mounted) {
+                    app.invalidateUserServices(username);
+                    await app.loadUserServices(username);
+                  }
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Add to catalog'),
+              ),
+            ),
+          ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, i) {
+                final item = services[i];
+                return Padding(
+                  padding: EdgeInsets.only(bottom: i < services.length - 1 ? 10 : 0),
+                  child: ServiceCatalogCard(
+                    item: item,
+                    compact: true,
+                    onTap: canManage
+                        ? () async {
+                            final saved = await context.push<bool>(
+                              '/services/${item.id}/edit',
+                              extra: item,
+                            );
+                            if (saved == true && context.mounted) {
+                              app.invalidateUserServices(username);
+                              await app.loadUserServices(username);
+                            }
+                          }
+                        : null,
+                  ),
+                );
+              },
+              childCount: services.length,
+            ),
           ),
         ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 100)),

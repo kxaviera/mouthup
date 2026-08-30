@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_state.dart';
 import '../../services/firebase_auth_service.dart';
+import '../../constants/app_brand.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/mouthup_logo.dart';
 import '../../widgets/primary_button.dart';
@@ -83,8 +84,8 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return ScreenWrapper(
-      child: SingleChildScrollView(
-        child: Column(
+      scrollable: true,
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             IconButton(
@@ -93,8 +94,8 @@ class _SignupScreenState extends State<SignupScreen> {
               alignment: Alignment.centerLeft,
             ),
             const SizedBox(height: 8),
-            const Center(child: MouthUpLogo(size: 72)),
-            const SizedBox(height: 24),
+            const Center(child: IsziFullLogo(size: 72)),
+            const SizedBox(height: 20),
             const Text('Create account', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.text)),
             const SizedBox(height: 8),
             const Text('Sign up with email — you\'ll pick a username and screen name next', style: TextStyle(color: AppColors.textMuted)),
@@ -152,10 +153,9 @@ class _SignupScreenState extends State<SignupScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textDim, fontSize: 12),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
           ],
         ),
-      ),
     );
   }
 }

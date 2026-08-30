@@ -4,14 +4,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, PostMood, SupportReactionType, ListingType, ListingStatus, RentPeriod } from '@prisma/client';
+import { Prisma, PostMood, SupportReactionType, ListingType, ListingStatus, RentPeriod, AccountType, Profession } from '@prisma/client';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { UsersService } from '../users/users.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { PushService } from '../push/push.service';
 import { buildCursorPage } from '../common/dto/cursor-pagination.dto';
 import { countWords, extractHashtags, MAX_POST_WORDS } from '../common/utils/post-text.util';
+import {
+  DEFAULT_FEED_RADIUS_KM,
+  geocodePlace,
+  haversineKm,
+} from '../common/utils/geo.util';
+
+const MARKETPLACE_LISTING_TYPES: ListingType[] = ['SALE', 'RENT', 'SWAP', 'GIVEAWAY'];
 
 const postInclude = {
   author: {
@@ -38,6 +46,7 @@ export class PostsService {
     private readonly moderation: ModerationService,
     private readonly users: UsersService,
     private readonly realtime: RealtimeGateway,
+    private readonly push: PushService,
   ) {}
 
   private async blockedAuthorIds(viewerId?: string) {
@@ -59,6 +68,19 @@ export class PostsService {
     return [];
   }
 
+  private async viewerGeoPoint(viewerId?: string) {
+    if (!viewerId) return null;
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: viewerId },
+      select: { city: true, latitude: true, longitude: true },
+    });
+    if (!viewer) return null;
+    if (viewer.latitude != null && viewer.longitude != null) {
+      return { lat: Number(viewer.latitude), lng: Number(viewer.longitude) };
+    }
+    return geocodePlace(viewer.city);
+  }
+
   private mapPost(
     post: PostWithDetails,
     ctx: {
@@ -66,7 +88,22 @@ export class PostsService {
       likedIds?: Set<string>;
       supportByPost?: Map<string, SupportReactionType>;
     } = {},
+    viewerPoint?: { lat: number; lng: number } | null,
   ) {
+    const postLat =
+      post.latitude != null
+        ? Number(post.latitude)
+        : geocodePlace(post.location ?? post.author.city)?.lat;
+    const postLng =
+      post.longitude != null
+        ? Number(post.longitude)
+        : geocodePlace(post.location ?? post.author.city)?.lng;
+
+    let distanceKm: number | null = null;
+    if (viewerPoint && postLat != null && postLng != null) {
+      distanceKm = Math.round(haversineKm(viewerPoint.lat, viewerPoint.lng, postLat, postLng) * 10) / 10;
+    }
+
     return {
       id: post.id,
       title: post.title,
@@ -82,11 +119,15 @@ export class PostsService {
       mood: post.mood ?? null,
       listingType: post.listingType,
       listingStatus: post.listingStatus,
+      requestedProfession: post.requestedProfession,
       price: post.price != null ? Number(post.price) : null,
       currency: post.currency,
       rentPeriod: post.rentPeriod,
       swapFor: post.swapFor,
       location: post.location,
+      latitude: postLat,
+      longitude: postLng,
+      distanceKm,
       viewCount: post.viewCount,
       likeCount: post._count.likes,
       commentCount: post._count.comments,
@@ -146,15 +187,34 @@ export class PostsService {
     q?: string;
     listingType?: ListingType;
     city?: string;
+    feedMode?: 'for_you' | 'following' | 'nearby' | 'explore';
+    radiusKm?: number;
     viewerId?: string;
   }) {
     const limit = Math.min(params.limit ?? 20, 50);
     const blockedIds = await this.blockedAuthorIds(params.viewerId);
+    const feedMode = params.feedMode === 'following' ? 'following' : 'for_you';
+    const radiusKm = params.radiusKm ?? DEFAULT_FEED_RADIUS_KM;
+    const isSearch = !!params.q?.trim();
+
+    const viewer = params.viewerId
+      ? await this.prisma.user.findUnique({
+          where: { id: params.viewerId },
+          select: {
+            id: true,
+            city: true,
+            latitude: true,
+            longitude: true,
+          },
+        })
+      : null;
 
     const where: Prisma.PostWhereInput = {
       deletedAt: null,
       authorId: blockedIds.length ? { notIn: blockedIds } : undefined,
-      ...(params.listingType ? { listingType: params.listingType } : {}),
+      ...(params.listingType
+        ? { listingType: params.listingType }
+        : { listingType: { in: MARKETPLACE_LISTING_TYPES } }),
       ...(params.hashtag
         ? {
             content: {
@@ -169,22 +229,49 @@ export class PostsService {
               { title: { contains: params.q, mode: 'insensitive' } },
               { content: { contains: params.q, mode: 'insensitive' } },
               { location: { contains: params.q, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-      ...(params.city
-        ? {
-            OR: [
-              { location: { contains: params.city, mode: 'insensitive' } },
-              { author: { city: { contains: params.city, mode: 'insensitive' } } },
+              { author: { username: { contains: params.q, mode: 'insensitive' } } },
+              { author: { screenName: { contains: params.q, mode: 'insensitive' } } },
             ],
           }
         : {}),
     };
 
+    const andClauses: Prisma.PostWhereInput[] = [];
+
+    if (feedMode === 'following' && viewer) {
+      const following = await this.prisma.follow.findMany({
+        where: { followerId: viewer.id },
+        select: { followingId: true },
+      });
+      const followingIds = following.map((f) => f.followingId);
+      andClauses.push({
+        OR: [
+          { authorId: viewer.id },
+          ...(followingIds.length ? [{ authorId: { in: followingIds } }] : []),
+        ],
+      });
+    } else if (!isSearch) {
+      const cityFilter = params.city?.trim() || viewer?.city?.trim();
+      if (cityFilter && !viewer?.latitude) {
+        andClauses.push({
+          OR: [
+            { location: { contains: cityFilter, mode: 'insensitive' } },
+            { author: { city: { contains: cityFilter, mode: 'insensitive' } } },
+          ],
+        });
+      }
+    }
+
+    if (andClauses.length) {
+      where.AND = andClauses;
+    }
+
+    const fetchLimit =
+      feedMode === 'following' || isSearch ? limit : Math.min(limit * 4, 200);
+
     const posts = await this.prisma.post.findMany({
       where,
-      take: limit + 1,
+      take: fetchLimit + 1,
       ...(params.cursor ? { cursor: { id: params.cursor }, skip: 1 } : {}),
       orderBy: { createdAt: 'desc' },
       include: postInclude,
@@ -195,10 +282,27 @@ export class PostsService {
       posts.map((p) => p.id),
     );
 
-    const page = buildCursorPage(posts, limit);
+    const viewerPoint =
+      viewer?.latitude != null && viewer?.longitude != null
+        ? { lat: Number(viewer.latitude), lng: Number(viewer.longitude) }
+        : geocodePlace(viewer?.city ?? params.city);
+
+    const page = buildCursorPage(posts, fetchLimit);
+    let items = page.items.map((p) => this.mapPost(p, ctx, viewerPoint));
+
+    if (feedMode === 'for_you' && viewerPoint && !isSearch) {
+      items = items.filter((item) => {
+        if (item.distanceKm == null) return false;
+        return item.distanceKm <= radiusKm;
+      });
+    }
+
+    items = items.slice(0, limit);
+
     return {
-      ...page,
-      items: page.items.map((p) => this.mapPost(p, ctx)),
+      items,
+      nextCursor: page.hasMore && items.length > 0 ? items[items.length - 1].id : null,
+      hasMore: page.hasMore && items.length >= limit,
     };
   }
 
@@ -223,7 +327,8 @@ export class PostsService {
     if (!post) throw new NotFoundException('Post not found');
 
     const ctx = await this.loadPostContext(viewerId, [id]);
-    return this.mapPost(post, ctx);
+    const viewerPoint = await this.viewerGeoPoint(viewerId);
+    return this.mapPost(post, ctx, viewerPoint);
   }
 
   async createListing(authorId: string, dto: CreateListingDto) {
@@ -252,9 +357,18 @@ export class PostsService {
       throw new BadRequestException('Only service providers can post service offers');
     }
 
+    if (listingType === 'SERVICE_REQUEST') {
+      if (!dto.requestedProfession) {
+        throw new BadRequestException('Service request posts need requestedProfession');
+      }
+    }
+
     const hashtags = extractHashtags(content);
     const tagForType = listingType.toLowerCase();
     if (!hashtags.includes(tagForType)) hashtags.unshift(tagForType);
+
+    const postLocation = dto.location?.trim() || author.city || null;
+    const coords = geocodePlace(postLocation);
 
     const post = await this.prisma.post.create({
       data: {
@@ -263,11 +377,15 @@ export class PostsService {
         content,
         listingType,
         listingStatus: 'OPEN',
+        requestedProfession:
+          listingType === 'SERVICE_REQUEST' ? dto.requestedProfession : null,
         price: dto.price != null ? dto.price : null,
         currency: dto.currency ?? 'INR',
         rentPeriod: dto.rentPeriod as RentPeriod | undefined,
         swapFor: dto.swapFor?.trim() || null,
-        location: dto.location?.trim() || author.city || null,
+        location: postLocation,
+        latitude: coords?.lat ?? null,
+        longitude: coords?.lng ?? null,
         hashtags: hashtags as unknown as Prisma.InputJsonValue,
         media: {
           create: (dto.media ?? []).map((m, i) => ({
@@ -283,7 +401,61 @@ export class PostsService {
     await this.updateHashtagStats(hashtags);
     const mapped = this.mapPost(post);
     this.broadcastFeedPost(mapped);
+
+    if (listingType === 'SERVICE_REQUEST' && dto.requestedProfession) {
+      await this.notifyNearbyProviders({
+        requestedProfession: dto.requestedProfession,
+        postTitle: title,
+        postLocation: post.location ?? author.city,
+        postId: post.id,
+      });
+    }
+
     return mapped;
+  }
+
+  private async notifyNearbyProviders(params: {
+    requestedProfession: Profession;
+    postTitle: string;
+    postLocation: string | null;
+    postId: string;
+  }) {
+    const city = params.postLocation?.trim();
+    const providers = await this.prisma.user.findMany({
+      where: {
+        accountType: AccountType.SERVICE_PROVIDER,
+        profession: params.requestedProfession,
+        bannedAt: null,
+        pushEnabled: true,
+        fcmToken: { not: null },
+        ...(city
+          ? {
+              OR: [
+                { city: { contains: city, mode: 'insensitive' } },
+                { city: { contains: city.split(',')[0].trim(), mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      select: { id: true },
+      take: 100,
+    });
+
+    const locationLabel = params.postLocation ?? 'nearby';
+    await Promise.all(
+      providers.map((provider) =>
+        this.push.sendToUser(
+          provider.id,
+          'New job nearby',
+          `${params.postTitle} — ${locationLabel}`,
+          {
+            type: 'SERVICE_REQUEST',
+            postId: params.postId,
+            profession: params.requestedProfession,
+          },
+        ),
+      ),
+    );
   }
 
   private validateListingFields(listingType: ListingType, dto: CreateListingDto) {
@@ -468,9 +640,10 @@ export class PostsService {
       userId,
       pageSaves.map((s) => s.postId),
     );
+    const viewerPoint = await this.viewerGeoPoint(userId);
 
     return {
-      items: pageSaves.map((s) => this.mapPost(s.post, ctx)),
+      items: pageSaves.map((s) => this.mapPost(s.post, ctx, viewerPoint)),
       nextCursor: hasMore ? pageSaves[pageSaves.length - 1].postId : null,
       hasMore,
     };
@@ -491,13 +664,33 @@ export class PostsService {
       authorId,
       page.items.map((p) => p.id),
     );
-    return { ...page, items: page.items.map((p) => this.mapPost(p, ctx)) };
+    const viewerPoint = await this.viewerGeoPoint(authorId);
+    return { ...page, items: page.items.map((p) => this.mapPost(p, ctx, viewerPoint)) };
   }
 
   async postsByUser(username: string, cursor?: string, limit = 20, viewerId?: string) {
     const user = await this.prisma.user.findUnique({ where: { username } });
     if (!user) throw new NotFoundException('User not found');
-    return this.myPosts(user.id, cursor, limit);
+    const take = Math.min(limit, 50);
+    const posts = await this.prisma.post.findMany({
+      where: {
+        authorId: user.id,
+        deletedAt: null,
+        listingType: { in: MARKETPLACE_LISTING_TYPES },
+      },
+      take: take + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      orderBy: { createdAt: 'desc' },
+      include: postInclude,
+    });
+
+    const page = buildCursorPage(posts, take);
+    const ctx = await this.loadPostContext(
+      viewerId,
+      page.items.map((p) => p.id),
+    );
+    const viewerPoint = await this.viewerGeoPoint(viewerId);
+    return { ...page, items: page.items.map((p) => this.mapPost(p, ctx, viewerPoint)) };
   }
 
   async toggleSupportReaction(

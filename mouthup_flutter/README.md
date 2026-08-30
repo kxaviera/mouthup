@@ -25,9 +25,9 @@ Splash → Login / Sign up → Email verify → Onboarding → Feed
 
 ## Features
 
-- Anonymous feed with comment-only engagement
+- Marketplace feed with real-time updates
 - Direct messages, save & share
-- Demo account: `demo@mouthup.app` / `demo123`
+- Live notifications via API + WebSocket
 
 ## Stack
 

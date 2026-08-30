@@ -1,5 +1,32 @@
 import { IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 
+const PROFESSIONS = [
+  'PLUMBER',
+  'ELECTRICIAN',
+  'CHEF',
+  'PAINTER',
+  'CARPENTER',
+  'AC_REPAIR',
+  'CLEANER',
+  'DRIVER',
+  'TUTOR',
+  'MECHANIC',
+  'GARDENER',
+  'BEAUTICIAN',
+  'PHOTOGRAPHER',
+  'MAID',
+  'NURSE',
+  'PEST_CONTROL',
+  'BABYSITTER',
+  'ELDER_CARE',
+  'TAILOR',
+  'LAUNDRY',
+  'SECURITY',
+  'EVENT_PLANNER',
+  'PHYSIO',
+  'OTHER',
+] as const;
+
 export class CompleteProfileDto {
   @IsString()
   @IsIn(['BUYER', 'SELLER', 'BOTH', 'SERVICE_PROVIDER'])
@@ -7,22 +34,7 @@ export class CompleteProfileDto {
 
   @IsOptional()
   @IsString()
-  @IsIn([
-    'PLUMBER',
-    'ELECTRICIAN',
-    'CHEF',
-    'PAINTER',
-    'CARPENTER',
-    'AC_REPAIR',
-    'CLEANER',
-    'DRIVER',
-    'TUTOR',
-    'MECHANIC',
-    'GARDENER',
-    'BEAUTICIAN',
-    'PHOTOGRAPHER',
-    'OTHER',
-  ])
+  @IsIn(PROFESSIONS)
   profession?: string;
 
   @IsOptional()

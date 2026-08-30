@@ -37,20 +37,20 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/images/mouthup_icon.png
-  adaptive_icon_background: "#000000"
-  adaptive_icon_foreground: assets/images/mouthup_icon.png
+  image_path: assets/images/iszi_icon.png
+  adaptive_icon_background: "#111111"
+  adaptive_icon_foreground: assets/images/iszi_icon.png
   web:
     generate: true
-    image_path: assets/images/mouthup_icon.png
-    background_color: "#000000"
-    theme_color: "#000000"
+    image_path: assets/images/iszi_icon.png
+    background_color: "#111111"
+    theme_color: "#111111"
   windows:
     generate: true
-    image_path: assets/images/mouthup_icon.png
+    image_path: assets/images/iszi_icon.png
   macos:
     generate: true
-    image_path: assets/images/mouthup_icon.png
+    image_path: assets/images/iszi_icon.png
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -64,9 +64,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/mouthup_icon.png
-    - assets/images/mouthup_wordmark.png
-    - assets/images/mouthup_wordmark_dark.png
+    - assets/images/iszi_icon.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

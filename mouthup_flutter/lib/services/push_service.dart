@@ -31,7 +31,7 @@ class PushService {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       const channel = AndroidNotificationChannel(
         'mouthup_default',
-        'MouthUp',
+        'ISZI',
         description: 'Notifications for messages and activity',
         importance: Importance.high,
       );
@@ -71,7 +71,7 @@ class PushService {
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'mouthup_default',
-            'MouthUp',
+            'ISZI',
             importance: Importance.high,
             priority: Priority.high,
           ),

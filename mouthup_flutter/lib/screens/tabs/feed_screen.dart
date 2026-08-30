@@ -6,7 +6,7 @@ import '../../providers/app_state.dart';
 import '../../utils/user_profile_nav.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/post_share.dart';
-import '../../widgets/mouthup_logo.dart';
+import '../../widgets/notification_icon_button.dart';
 import '../../widgets/post_tile.dart';
 import '../../widgets/screen_wrapper.dart';
 
@@ -39,7 +39,7 @@ class _FeedScreenState extends State<FeedScreen> {
     final profile = app.socialProfile(post.author);
     return PostTile(
       post: post,
-      authorAvatarUrl: profile?.avatarUrl,
+      authorAvatarUrl: app.avatarForUser(post.author, displayName: post.displayAuthor),
       authorVerified: post.authorIsVerified || (profile?.verified ?? false),
       showDivider: index < total - 1,
       onTap: () => context.push('/post/${post.id}'),
@@ -72,7 +72,6 @@ class _FeedScreenState extends State<FeedScreen> {
       child: Column(
         children: [
           _topBar(app),
-          _locationBar(app, posts.length),
           _feedTabs(app),
           Expanded(
             child: RefreshIndicator(
@@ -110,49 +109,58 @@ class _FeedScreenState extends State<FeedScreen> {
   String _emptyMessage(AppState app) {
     return app.feedTab == FeedTab.following
         ? 'Follow people to see their listings here.'
-        : 'No nearby listings.';
+        : 'No listings within 50 km of you.';
   }
 
   Widget _topBar(AppState app) {
     final unread = app.unreadNotificationCount;
+    final city = app.userCity ?? 'Your area';
+    final greeting = app.displayName.trim().isEmpty ? 'there' : app.displayName.trim();
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+      padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
       decoration: const BoxDecoration(
         color: AppColors.bg,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const MouthUpWordmark(height: 28),
-          const Spacer(),
-          IconButton(
-            tooltip: 'Notifications',
-            onPressed: () => context.push('/notifications'),
-            icon: Badge(
-              isLabelVisible: unread > 0,
-              label: Text(unread > 9 ? '9+' : '$unread'),
-              backgroundColor: AppColors.primary,
-              textColor: AppColors.onPrimary,
-              child: const Icon(Icons.notifications_outlined, color: AppColors.text, size: 24),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hi, $greeting',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_rounded, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        city,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _locationBar(AppState app, int count) {
-    final city = app.userCity ?? 'Your area';
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Row(
-        children: [
-          const Icon(Icons.location_on_outlined, size: 16, color: AppColors.textMuted),
-          const SizedBox(width: 6),
-          Text(
-            '$city · $count listings',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w500),
+          NotificationIconButton(
+            unreadCount: unread,
+            onPressed: () => context.push('/notifications'),
           ),
         ],
       ),
@@ -160,11 +168,19 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _feedTabs(AppState app) {
+    const tabs = [
+      (FeedTab.forYou, 'For you'),
+      (FeedTab.following, 'Following'),
+    ];
+
     Widget tab(FeedTab tab, String label) {
       final active = app.feedTab == tab;
       return Expanded(
         child: GestureDetector(
-          onTap: () => app.setFeedTab(tab),
+          onTap: () {
+            app.setFeedTab(tab);
+            app.refreshFeed(listingType: app.feedListingFilter);
+          },
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
@@ -188,12 +204,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
     return Container(
       decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border))),
-      child: Row(
-        children: [
-          tab(FeedTab.nearby, 'Nearby'),
-          tab(FeedTab.following, 'Following'),
-        ],
-      ),
+      child: Row(children: [for (final t in tabs) tab(t.$1, t.$2)]),
     );
   }
 }

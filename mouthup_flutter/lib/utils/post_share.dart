@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../constants/app_brand.dart';
 import '../config/api_config.dart';
 import '../models/post.dart';
 import 'post_share_image_stub.dart'
@@ -12,14 +13,14 @@ import 'post_share_image_stub.dart'
 Future<void> sharePost(BuildContext context, MouthUpPost post) async {
   final link = ApiConfig.postShareUrl(post.id);
   final excerpt = _excerpt(post.content);
-  final text = '@${post.author} on MouthUp\n\n$excerpt\n\n$link';
+  final text = '@${post.author} on ${AppBrand.sharePrefix}\n\n$excerpt\n\n$link';
   final origin = _shareOrigin(context);
   final image = kIsWeb ? null : await _firstShareableImage(post.imageUrls);
 
   await SharePlus.instance.share(
     ShareParams(
       text: text,
-      subject: 'MouthUp post',
+      subject: '${AppBrand.sharePrefix} listing',
       files: image == null ? null : [image],
       sharePositionOrigin: origin,
     ),

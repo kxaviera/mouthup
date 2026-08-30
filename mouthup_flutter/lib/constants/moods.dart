@@ -110,18 +110,3 @@ MoodId? moodIdFromApi(String? value) {
 }
 
 const nicknames = ['CoolBreeze47', 'SilentOwl', 'NightWalker', 'CalmRiver', 'StarGazer22'];
-
-const mockMessages = [
-  ChatMessage(id: '1', nickname: 'SilentOwl', text: 'Same here, work stress is heavy today'),
-  ChatMessage(id: '2', nickname: 'CoolBreeze47', text: 'Yeah, my manager dropped a surprise meeting...', isMe: true),
-  ChatMessage(id: '3', nickname: 'NightWalker', text: '🙏', type: ChatMessageType.emoji),
-  ChatMessage(
-    id: '3b',
-    nickname: 'CalmRiver',
-    text: 'Hug',
-    type: ChatMessageType.gif,
-    mediaUrl: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif',
-  ),
-  ChatMessage(id: '4', nickname: 'CalmRiver', text: '💪', type: ChatMessageType.sticker),
-  ChatMessage(id: '5', nickname: 'NightWalker', text: 'I feel the same way right now'),
-];

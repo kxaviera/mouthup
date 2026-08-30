@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../constants/account_types.dart';
+import '../../constants/app_brand.dart';
+import '../../constants/feature_flags.dart';
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/primary_button.dart';
@@ -18,6 +20,14 @@ class _AccountTypeScreenState extends State<AccountTypeScreen> {
   AccountTypeId? _selected;
 
   @override
+  void initState() {
+    super.initState();
+    if (visibleAccountTypeOptions.length == 1) {
+      _selected = visibleAccountTypeOptions.first.id;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ScreenWrapper(
       child: Column(
@@ -26,16 +36,16 @@ class _AccountTypeScreenState extends State<AccountTypeScreen> {
           const SizedBox(height: 8),
           const Text('STEP 2 OF 4', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          const Text('How will you use MouthUp?', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.text)),
+          Text('How will you use ${AppBrand.name}?', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.text)),
           const SizedBox(height: 8),
-          const Text('Pick what fits you — you can browse, sell, or offer services locally.', style: TextStyle(color: AppColors.textMuted)),
+          const Text('Pick how you will buy and sell locally.', style: TextStyle(color: AppColors.textMuted)),
           const SizedBox(height: 24),
           Expanded(
             child: ListView.separated(
-              itemCount: accountTypeOptions.length,
+              itemCount: visibleAccountTypeOptions.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (_, i) {
-                final opt = accountTypeOptions[i];
+                final opt = visibleAccountTypeOptions[i];
                 final selected = _selected == opt.id;
                 return InkWell(
                   onTap: () => setState(() => _selected = opt.id),
@@ -75,11 +85,7 @@ class _AccountTypeScreenState extends State<AccountTypeScreen> {
                 ? null
                 : () {
                     context.read<AppState>().setOnboardingAccountType(_selected!);
-                    if (_selected == AccountTypeId.serviceProvider) {
-                      context.go('/onboarding/profession');
-                    } else {
-                      context.go('/onboarding/city');
-                    }
+                    context.go('/onboarding/city');
                   },
           ),
           const SizedBox(height: 24),

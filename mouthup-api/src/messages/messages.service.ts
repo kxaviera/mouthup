@@ -157,7 +157,7 @@ export class MessagesService {
       type: NotificationType.DM,
       title: 'New message',
       body: `${sender?.username ?? 'Someone'} sent you a message`,
-      route: `/messages/${sender?.username ?? ''}`,
+      route: `/messages/chat?peer=${encodeURIComponent(sender?.username ?? '')}`,
     });
 
     return message;

@@ -37,7 +37,6 @@ Health: `http://localhost:3000/api/v1/health`
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | admin@mouthup.app | admin123change |
-| Demo user | demo@mouthup.app | demo123 |
 
 ## API modules
 

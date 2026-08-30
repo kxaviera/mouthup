@@ -113,7 +113,7 @@ class _MyPostsScreenState extends State<MyPostsScreen> {
                             const SizedBox(height: 16),
                             const Text('Nothing posted yet', style: TextStyle(color: AppColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 8),
-                            const Text('Share your first thought with the community', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                            const Text('Share your first listing with buyers nearby', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                             const SizedBox(height: 24),
                             PrimaryButton(title: 'Create post', onPressed: () => context.push('/create-post')),
                           ],
@@ -124,8 +124,11 @@ class _MyPostsScreenState extends State<MyPostsScreen> {
                       itemCount: myPosts.length,
                       itemBuilder: (_, i) {
                         final post = myPosts[i];
+                        final profile = app.socialProfile(post.author);
                         return PostTile(
                           post: post,
+                          authorAvatarUrl: profile?.avatarUrl ?? app.avatarForUser(post.author, displayName: post.displayAuthor),
+                          authorVerified: post.authorIsVerified || (profile?.verified ?? false),
                           showDivider: i < myPosts.length - 1,
                           onTap: () => context.push('/post/${post.id}'),
                           onLongPress: () => _postActions(context, app, post),

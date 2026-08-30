@@ -28,7 +28,7 @@ class NotFoundScreen extends StatelessWidget {
                 style: const TextStyle(color: AppColors.textMuted),
               ),
               const SizedBox(height: 28),
-              PrimaryButton(title: 'Back to feed', onPressed: () => popOrGo(context, '/home')),
+              PrimaryButton(title: 'Back to marketplace', onPressed: () => popOrGo(context, '/home')),
             ],
           ),
         ),

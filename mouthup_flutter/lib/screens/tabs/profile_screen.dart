@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../models/social_profile.dart';
 import '../../providers/app_state.dart';
 import '../../utils/nav_back.dart';
 import '../../theme/app_theme.dart';
@@ -18,14 +17,10 @@ class ProfileScreen extends StatelessWidget {
     final app = context.watch<AppState>();
 
     return PopScope(
-      canPop: false,
+      canPop: !inTabShell,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        if (inTabShell) {
-          context.go('/home');
-        } else {
-          popOrGo(context, '/home');
-        }
+        if (didPop || !inTabShell) return;
+        context.go('/home');
       },
       child: ScreenWrapper(
         padding: false,
@@ -38,7 +33,10 @@ class ProfileScreen extends StatelessWidget {
               child: Row(
                 children: [
                   if (!inTabShell)
-                    IconButton(onPressed: () => popOrGo(context, '/home'), icon: const Icon(Icons.arrow_back, color: AppColors.text)),
+                    IconButton(
+                      onPressed: () => popOrGo(context, '/home'),
+                      icon: const Icon(Icons.arrow_back, color: AppColors.text),
+                    ),
                   const Text('Profile', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.text)),
                   const Spacer(),
                   IconButton(
@@ -54,9 +52,8 @@ class ProfileScreen extends StatelessWidget {
                 username: app.nickname,
                 isSelf: true,
                 onEditPhoto: () {
-                  app.setProfileAvatarUrl(avatarUrlForUser('${app.nickname}-${DateTime.now().millisecondsSinceEpoch}'));
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Profile photo updated')),
+                    const SnackBar(content: Text('Photo upload coming soon')),
                   );
                 },
               ),

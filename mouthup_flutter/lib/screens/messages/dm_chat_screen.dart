@@ -162,7 +162,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
                       onPressed: () => popOrGo(context, '/chats'),
                       icon: const Icon(Icons.arrow_back, color: AppColors.text),
                     ),
-                    UserAvatar(name: peer, radius: 18),
+                    UserAvatar(name: peer, imageUrl: app.avatarForUser(peer), radius: 18),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(

@@ -4,7 +4,7 @@ import '../providers/app_state.dart';
 
 void openUserProfile(BuildContext context, AppState app, String username) {
   if (app.isSelf(username)) {
-    context.push('/profile');
+    context.go('/profile');
     return;
   }
   if (!app.canViewProfile(username)) {

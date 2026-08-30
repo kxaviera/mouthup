@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../utils/display_name.dart';
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/post_share.dart';
 import '../../utils/user_profile_nav.dart';
 import '../../widgets/post_tile.dart';
 import '../../widgets/screen_wrapper.dart';
@@ -41,9 +43,9 @@ class _SearchScreenState extends State<SearchScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Text(
+            child: const Text(
               'Search',
-              style: TextStyle(fontSize: widget.inTabShell ? 22 : 20, fontWeight: FontWeight.w800, color: AppColors.text),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.text),
             ),
           ),
           Padding(
@@ -54,7 +56,7 @@ class _SearchScreenState extends State<SearchScreen> {
               textInputAction: TextInputAction.search,
               onChanged: app.setSearchQuery,
               decoration: InputDecoration(
-                hintText: 'Listings, services, people, location…',
+                hintText: 'Search listings or people…',
                 prefixIcon: const Icon(Icons.search, color: AppColors.textDim),
                 suffixIcon: query.isNotEmpty
                     ? IconButton(
@@ -75,9 +77,11 @@ class _SearchScreenState extends State<SearchScreen> {
           if (query.isEmpty)
             const Expanded(
               child: Center(
-                child: Text('Search the marketplace', style: TextStyle(color: AppColors.textMuted)),
+                child: Text('Search by keyword or profile name', style: TextStyle(color: AppColors.textMuted)),
               ),
             )
+          else if (app.searchLoading)
+            const Expanded(child: Center(child: CircularProgressIndicator(color: AppColors.primary)))
           else
             Expanded(
               child: ListView(
@@ -89,10 +93,16 @@ class _SearchScreenState extends State<SearchScreen> {
                       child: Text('PEOPLE', style: TextStyle(color: AppColors.textDim, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
                     ),
                     ...users.map((u) {
+                      final name = displayNameFor(screenName: u.screenName, username: u.username);
                       return ListTile(
-                        leading: UserAvatar(name: u.username, imageUrl: u.avatarUrl, verified: u.verified, radius: 20),
-                        title: Text(u.username, style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w600)),
-                        subtitle: Text(u.city ?? u.bio ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                        leading: UserAvatar(name: name, imageUrl: u.avatarUrl, verified: u.verified, radius: 20),
+                        title: Text(name, style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w600)),
+                        subtitle: Text(
+                          u.username == name ? (u.city ?? '') : '@${u.username}${u.city != null ? ' · ${u.city}' : ''}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        ),
                         onTap: () => openUserProfile(context, app, u.username),
                       );
                     }),
@@ -119,6 +129,16 @@ class _SearchScreenState extends State<SearchScreen> {
                         authorVerified: post.authorIsVerified || (profile?.verified ?? false),
                         showDivider: e.key < results.length - 1,
                         onTap: () => context.push('/post/${post.id}'),
+                        onSave: () async {
+                          final wasSaved = post.userSaved;
+                          await app.toggleSavePost(post.id);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(wasSaved ? 'Removed from saved' : 'Post saved')),
+                          );
+                        },
+                        onComment: () => context.push('/post/${post.id}'),
+                        onShare: () => sharePost(context, post),
                         onLike: () => app.toggleLikePost(post.id),
                         onChat: post.author == app.nickname
                             ? null

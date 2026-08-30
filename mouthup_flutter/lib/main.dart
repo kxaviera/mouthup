@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'constants/app_brand.dart';
 import 'firebase/firebase_options.dart';
 import 'providers/app_state.dart';
 import 'router/app_router.dart';
@@ -47,15 +48,19 @@ class _MouthUpAppState extends State<MouthUpApp> {
     return ChangeNotifierProvider.value(
       value: _appState,
       child: MaterialApp.router(
-        title: 'MouthUp',
+        title: AppBrand.name,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark(),
         routerConfig: _router,
         builder: (context, child) {
-          if (kIsWeb && child != null) {
-            return MobileFrame(child: child);
+          final page = child ?? const ColoredBox(
+            color: AppColors.bg,
+            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          );
+          if (kIsWeb) {
+            return MobileFrame(child: page);
           }
-          return child ?? const SizedBox.shrink();
+          return page;
         },
       ),
     );

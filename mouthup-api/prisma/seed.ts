@@ -48,39 +48,6 @@ async function seedBots() {
   console.log(`Bot accounts: ${BOT_REGIONS.length} regions (${created} new)`);
 }
 
-async function seedDemoUser() {
-  if (process.env.SEED_DEMO_USER === 'false') return;
-
-  const passwordHash = await bcrypt.hash('demo123', 12);
-  await prisma.user.upsert({
-    where: { email: 'demo@mouthup.app' },
-    update: {
-      passwordHash,
-      username: 'CoolBreeze47',
-      screenName: 'Cool Breeze',
-      usernameLocked: true,
-      emailVerified: true,
-      onboardingDone: true,
-      accountType: 'BOTH',
-      city: 'Mumbai',
-      isVerified: true,
-    },
-    create: {
-      email: 'demo@mouthup.app',
-      passwordHash,
-      username: 'CoolBreeze47',
-      screenName: 'Cool Breeze',
-      usernameLocked: true,
-      emailVerified: true,
-      onboardingDone: true,
-      accountType: 'BOTH',
-      city: 'Mumbai',
-      isVerified: true,
-    },
-  });
-  console.log('Demo user: demo@mouthup.app / demo123');
-}
-
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@mouthup.app';
   const adminPassword = process.env.ADMIN_PASSWORD ?? 'admin123change';
@@ -101,7 +68,6 @@ async function main() {
   });
 
   await seedBots();
-  await seedDemoUser();
 
   console.log('Seed complete');
   if (process.env.NODE_ENV !== 'production') {

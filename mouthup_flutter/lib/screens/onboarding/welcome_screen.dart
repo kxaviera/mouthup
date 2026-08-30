@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_state.dart';
+import '../../constants/app_brand.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/screen_wrapper.dart';
@@ -28,7 +29,7 @@ class WelcomeScreen extends StatelessWidget {
           const SizedBox(height: 8),
           const Text('Almost done!', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          const Text('Welcome to MouthUp', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.text)),
+          Text('Welcome to ${AppBrand.name}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.text)),
           const SizedBox(height: 8),
           const Text(
             'Your local marketplace and community — list items, find services, connect nearby.',

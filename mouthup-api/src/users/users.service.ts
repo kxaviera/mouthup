@@ -3,6 +3,7 @@ import { AccountType, Profession } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { geocodePlace } from '../common/utils/geo.util';
 
 const USERNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{2,19}$/;
 
@@ -152,6 +153,7 @@ export class UsersService {
     }
 
     const city = dto.city?.trim() || user.signupCity || user.city || undefined;
+    const coords = geocodePlace(city);
 
     const updated = await this.prisma.user.update({
       where: { id: userId },
@@ -159,6 +161,8 @@ export class UsersService {
         accountType,
         profession,
         city,
+        latitude: coords?.lat ?? null,
+        longitude: coords?.lng ?? null,
         onboardingDone: true,
       },
       select: {

@@ -89,7 +89,27 @@ enum Profession {
   GARDENER
   BEAUTICIAN
   PHOTOGRAPHER
+  MAID
+  NURSE
+  PEST_CONTROL
+  BABYSITTER
+  ELDER_CARE
+  TAILOR
+  LAUNDRY
+  SECURITY
+  EVENT_PLANNER
+  PHYSIO
   OTHER
+}
+
+enum ServicePricingType {
+  FIXED
+  FROM
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  ON_CHAT
 }
 
 enum ListingStatus {
@@ -131,6 +151,8 @@ model User {
   accountType     AccountType? @map("account_type")
   profession      Profession?  @map("profession")
   city            String?
+  latitude        Decimal?  @db.Decimal(10, 7)
+  longitude       Decimal?  @db.Decimal(10, 7)
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
@@ -154,6 +176,7 @@ model User {
   likes                PostLike[]
   followers            Follow[] @relation("UserFollowers")
   following            Follow[] @relation("UserFollowing")
+  serviceCatalog       ServiceCatalogItem[]
 
   @@index([createdAt(sort: Desc)])
   @@index([bannedAt])
@@ -198,11 +221,14 @@ model Post {
   mood          PostMood?      @map("mood")
   listingType   ListingType?   @map("listing_type")
   listingStatus ListingStatus  @default(OPEN) @map("listing_status")
+  requestedProfession Profession? @map("requested_profession")
   price         Decimal?       @db.Decimal(12, 2)
   currency      String         @default("INR")
   rentPeriod    RentPeriod?    @map("rent_period")
   swapFor       String?        @map("swap_for")
   location      String?
+  latitude      Decimal?       @db.Decimal(10, 7)
+  longitude     Decimal?       @db.Decimal(10, 7)
   viewCount     Int            @default(0) @map("view_count")
   sourceUrl     String?        @unique @map("source_url")
   deletedAt     DateTime?      @map("deleted_at")
@@ -220,6 +246,7 @@ model Post {
   @@index([createdAt(sort: Desc)])
   @@index([mood])
   @@index([listingType, listingStatus, createdAt(sort: Desc)])
+  @@index([requestedProfession, listingType, createdAt(sort: Desc)])
   @@index([authorId, createdAt(sort: Desc)])
   @@index([deletedAt])
   @@map("posts")
@@ -383,4 +410,28 @@ model HashtagStat {
 
   @@index([postCount(sort: Desc)])
   @@map("hashtag_stats")
+}
+
+model ServiceCatalogItem {
+  id          String              @id @default(cuid())
+  userId      String              @map("user_id")
+  profession  Profession
+  title       String
+  description String?
+  pricingType ServicePricingType  @map("pricing_type")
+  price       Decimal?            @db.Decimal(12, 2)
+  currency    String              @default("INR")
+  metadata    Json                @default("{}")
+  city        String?
+  active      Boolean             @default(true)
+  sortOrder   Int                 @default(0) @map("sort_order")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([profession, active, createdAt(sort: Desc)])
+  @@index([userId, sortOrder])
+  @@index([city])
+  @@map("service_catalog_items")
 }

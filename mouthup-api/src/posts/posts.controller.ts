@@ -34,6 +34,8 @@ export class PostsController {
       q: query.q,
       listingType: query.listingType,
       city: query.city,
+      feedMode: query.feedMode,
+      radiusKm: query.radiusKm,
       viewerId: user?.id,
     });
   }

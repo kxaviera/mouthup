@@ -1,15 +1,14 @@
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import '../../constants/account_types.dart';
 import '../../constants/listing_types.dart';
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/nav_back.dart';
 import '../../utils/post_text.dart';
-import '../../widgets/primary_button.dart';
 import '../../widgets/screen_wrapper.dart';
 
 enum _AttachmentKind { image, video }
@@ -60,14 +59,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     super.dispose();
   }
 
-  List<ListingTypeOption> _availableTypes(AppState app) {
-    final isProvider = accountTypeFromApi(app.accountType)?.id == AccountTypeId.serviceProvider;
-    return listingTypeOptions.where((t) {
-      if (t.id == ListingTypeId.service) return isProvider;
-      return true;
-    }).toList();
-  }
-
   int get _wordCount => countWords('${_title.text}\n${_content.text}');
 
   void _onTextChanged() {
@@ -99,9 +90,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     }
   }
 
-  void _removeAttachment(int index) {
-    setState(() => _attachments.removeAt(index));
-  }
+  void _removeAttachment(int index) => setState(() => _attachments.removeAt(index));
 
   double? _parsedPrice() {
     final raw = _price.text.trim();
@@ -114,9 +103,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     final app = context.read<AppState>();
     final title = _title.text.trim();
     final content = _content.text.trim();
-
-    if (!_acceptedTerms) return;
-    if (title.length < 3) return;
+    if (!_acceptedTerms || title.length < 3) return;
 
     setState(() => _publishing = true);
 
@@ -155,16 +142,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     return _content.text.trim().isNotEmpty || _attachments.isNotEmpty;
   }
 
+  bool get _atWordLimit => _wordCount >= PostLimits.maxWords;
+
+  bool get _showPrice =>
+      _listingType != null && _listingType!.id != ListingTypeId.giveaway;
+
+  bool get _showRentPeriod => _listingType?.id == ListingTypeId.rent;
+
+  bool get _showSwapFor => _listingType?.id == ListingTypeId.swap;
+
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppState>();
-    final types = _availableTypes(app);
-    final atWordLimit = _wordCount >= PostLimits.maxWords;
-    final showPrice = _listingType != null &&
-        _listingType!.id != ListingTypeId.giveaway &&
-        _listingType!.id != ListingTypeId.serviceRequest;
-    final showRentPeriod = _listingType?.id == ListingTypeId.rent;
-    final showSwapFor = _listingType?.id == ListingTypeId.swap;
+    final types = marketplaceListingTypes;
 
     return PopScope(
       canPop: false,
@@ -172,235 +161,444 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         if (!didPop) popOrGo(context, '/home');
       },
       child: ScreenWrapper(
+        padding: false,
+        bottomSafe: false,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                IconButton(onPressed: () => popOrGo(context, '/home'), icon: const Icon(Icons.close, color: AppColors.textMuted)),
-                const Expanded(
-                  child: Text('New listing', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.text)),
-                ),
-                TextButton(onPressed: _canPublish && !_publishing ? _publish : null, child: const Text('Post', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700))),
-              ],
-            ),
+            _header(),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: types.map((type) {
-                        final selected = _listingType?.id == type.id;
-                        return ChoiceChip(
-                          label: Text('${type.emoji} ${type.label}'),
-                          selected: selected,
-                          onSelected: (_) => setState(() => _listingType = type),
-                          selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                          labelStyle: TextStyle(color: selected ? AppColors.primary : AppColors.text, fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
-                        );
-                      }).toList(),
-                    ),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                children: [
+                  _sectionLabel('Listing type'),
+                  const SizedBox(height: 10),
+                  _typeGrid(types),
+                  const SizedBox(height: 24),
+                  _sectionLabel('Details'),
+                  const SizedBox(height: 10),
+                  _fieldCard(
+                    children: [
+                      _styledField(
+                        controller: _title,
+                        hint: 'Title — e.g. iPhone 13, 2BHK flat',
+                        onChanged: _onTextChanged,
+                        style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w700, fontSize: 16),
+                      ),
+                      _divider(),
+                      _styledField(
+                        controller: _content,
+                        hint: 'Description, condition, pickup details…',
+                        onChanged: _onTextChanged,
+                        maxLines: 5,
+                        minLines: 4,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            '$_wordCount / ${PostLimits.maxWords} words',
+                            style: TextStyle(
+                              color: _atWordLimit ? AppColors.danger : AppColors.textDim,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_showPrice || _showRentPeriod || _showSwapFor) ...[
                     const SizedBox(height: 16),
-                    TextField(
-                      controller: _title,
-                      onChanged: (_) => _onTextChanged(),
-                      style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w700),
-                      decoration: const InputDecoration(hintText: 'Title — e.g. iPhone 13, 2BHK flat, AC repair'),
+                    _sectionLabel('Pricing'),
+                    const SizedBox(height: 10),
+                    _fieldCard(
+                      children: [
+                        if (_showPrice)
+                          _styledField(
+                            controller: _price,
+                            hint: 'Price in ₹ (optional)',
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            prefix: const Padding(
+                              padding: EdgeInsets.only(left: 16, right: 4),
+                              child: Text('₹', style: TextStyle(color: AppColors.textMuted, fontSize: 16, fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                        if (_showPrice && (_showRentPeriod || _showSwapFor)) _divider(),
+                        if (_showRentPeriod) ...[
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                            child: Text('Rent period', style: TextStyle(color: AppColors.textDim.withValues(alpha: 0.9), fontSize: 11, fontWeight: FontWeight.w600)),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: rentPeriodOptions.map((opt) {
+                                final selected = _rentPeriod == opt.id;
+                                return _miniChip(label: opt.label, selected: selected, onTap: () => setState(() => _rentPeriod = opt.id));
+                              }).toList(),
+                            ),
+                          ),
+                        ],
+                        if (_showSwapFor)
+                          _styledField(
+                            controller: _swapFor,
+                            hint: 'What do you want in exchange?',
+                            onChanged: () => setState(() {}),
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _content,
-                      onChanged: (_) => _onTextChanged(),
-                      maxLines: 5,
-                      style: const TextStyle(color: AppColors.text),
-                      decoration: const InputDecoration(hintText: 'Description, condition, details…'),
-                    ),
-                    const SizedBox(height: 6),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        '$_wordCount / ${PostLimits.maxWords} words',
-                        style: TextStyle(color: atWordLimit ? AppColors.danger : AppColors.textDim, fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    if (showPrice) ...[
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _price,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        style: const TextStyle(color: AppColors.text),
-                        decoration: const InputDecoration(hintText: 'Price in ₹ (optional)'),
-                      ),
-                    ],
-                    if (showRentPeriod) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        children: rentPeriodOptions.map((opt) {
-                          final selected = _rentPeriod == opt.id;
-                          return ChoiceChip(
-                            label: Text(opt.label),
-                            selected: selected,
-                            onSelected: (_) => setState(() => _rentPeriod = opt.id),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                    if (showSwapFor) ...[
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _swapFor,
-                        onChanged: (_) => setState(() {}),
-                        style: const TextStyle(color: AppColors.text),
-                        decoration: const InputDecoration(hintText: 'What do you want in exchange?'),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _location,
-                      style: const TextStyle(color: AppColors.text),
-                      decoration: const InputDecoration(hintText: 'Location / area'),
-                    ),
-                    const SizedBox(height: 16),
-                    _mediaAttachmentSection(),
                   ],
-                ),
+                  const SizedBox(height: 16),
+                  _sectionLabel('Location'),
+                  const SizedBox(height: 10),
+                  _fieldCard(
+                    children: [
+                      _styledField(
+                        controller: _location,
+                        hint: 'City or area',
+                        prefix: const Padding(
+                          padding: EdgeInsets.only(left: 14, right: 6),
+                          child: Icon(Icons.location_on_outlined, size: 20, color: AppColors.textMuted),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      _sectionLabel('Photos & videos'),
+                      const Spacer(),
+                      Text('${_attachments.length}/$_maxAttachments', style: const TextStyle(color: AppColors.textDim, fontSize: 12, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _mediaSection(),
+                ],
               ),
             ),
-            _termsAcceptance(),
-            const SizedBox(height: 12),
-            PrimaryButton(title: _publishing ? 'Posting…' : 'Publish listing', onPressed: _canPublish && !_publishing ? _publish : null),
-            const SizedBox(height: 16),
+            _bottomBar(),
           ],
         ),
       ),
     );
   }
 
-  Widget _termsAcceptance() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 24,
-          height: 24,
-          child: Checkbox(
-            value: _acceptedTerms,
-            onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
-            activeColor: AppColors.primary,
-            checkColor: AppColors.onPrimary,
-            side: const BorderSide(color: AppColors.border),
+  Widget _header() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(4, 4, 16, 12),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => popOrGo(context, '/home'),
+            icon: const Icon(Icons.close_rounded, color: AppColors.text),
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text('I accept the ', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-              GestureDetector(
-                onTap: () => context.push('/profile/terms'),
-                child: const Text('Terms & Conditions', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
-              ),
-            ],
+          const Expanded(
+            child: Column(
+              children: [
+                Text('New listing', style: TextStyle(color: AppColors.text, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+                SizedBox(height: 2),
+                Text('Reach buyers near you', style: TextStyle(color: AppColors.textDim, fontSize: 12)),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _mediaAttachmentSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text('Photos & videos', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
-            const Spacer(),
-            Text('${_attachments.length}/$_maxAttachments', style: const TextStyle(color: AppColors.textDim, fontSize: 11)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 96,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              ...List.generate(_attachments.length, (i) {
-                final item = _attachments[i];
-                return Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: item.kind == _AttachmentKind.image
-                            ? Image.memory(item.bytes, width: 96, height: 96, fit: BoxFit.cover)
-                            : Container(
-                                width: 96,
-                                height: 96,
-                                color: AppColors.bgElevated,
-                                child: const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.videocam_outlined, color: AppColors.primary, size: 28),
-                                    SizedBox(height: 4),
-                                    Text('Video', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
-                                  ],
-                                ),
-                              ),
-                      ),
-                      Positioned(
-                        top: -6,
-                        right: -6,
-                        child: GestureDetector(
-                          onTap: () => _removeAttachment(i),
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(color: AppColors.text, shape: BoxShape.circle),
-                            child: const Icon(Icons.close, size: 14, color: AppColors.onPrimary),
+  Widget _sectionLabel(String text) {
+    return Text(
+      text.toUpperCase(),
+      style: const TextStyle(color: AppColors.textDim, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8),
+    );
+  }
+
+  Widget _fieldCard({required List<Widget> children}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: children),
+    );
+  }
+
+  Widget _divider() => const Divider(height: 1, thickness: 1, color: AppColors.border);
+
+  Widget _styledField({
+    required TextEditingController controller,
+    required String hint,
+    VoidCallback? onChanged,
+    int maxLines = 1,
+    int minLines = 1,
+    TextInputType? keyboardType,
+    TextStyle? style,
+    Widget? prefix,
+  }) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged != null ? (_) => onChanged() : null,
+      maxLines: maxLines,
+      minLines: minLines,
+      keyboardType: keyboardType,
+      style: style ?? const TextStyle(color: AppColors.text, fontSize: 15),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: AppColors.textDim),
+        prefix: prefix,
+        filled: false,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        contentPadding: EdgeInsets.fromLTRB(prefix == null ? 16 : 4, 14, 16, 14),
+      ),
+    );
+  }
+
+  Widget _typeGrid(List<ListingTypeOption> types) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = (constraints.maxWidth - 10) / 2;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: types.map((type) {
+            final selected = _listingType?.id == type.id;
+            return SizedBox(
+              width: width,
+              child: Material(
+                color: selected ? AppColors.primary.withValues(alpha: 0.08) : AppColors.bgCard,
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  onTap: () => setState(() => _listingType = type),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.5 : 1),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(type.emoji, style: const TextStyle(fontSize: 22)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            type.label,
+                            style: TextStyle(
+                              color: selected ? AppColors.text : AppColors.textMuted,
+                              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        if (selected)
+                          const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 18),
+                      ],
+                    ),
                   ),
-                );
-              }),
-              if (_attachments.length < _maxAttachments) ...[
-                _addMediaButton(icon: Icons.add_a_photo_outlined, label: 'Photo', onTap: _pickImage),
-                const SizedBox(width: 10),
-                _addMediaButton(icon: Icons.videocam_outlined, label: 'Video', onTap: _pickVideo),
-              ],
-            ],
-          ),
-        ),
-      ],
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
-  Widget _addMediaButton({required IconData icon, required String label, required VoidCallback onTap}) {
+  Widget _miniChip({required String label, required bool selected, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 96,
-        height: 96,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.bgElevated,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border, width: 1.5),
+          color: selected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.bgElevated,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.border),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: AppColors.primary, size: 28),
-            const SizedBox(height: 6),
-            Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w600)),
+        child: Text(label, style: TextStyle(color: selected ? AppColors.text : AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+
+  Widget _mediaSection() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_attachments.isNotEmpty) ...[
+            SizedBox(
+              height: 108,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _attachments.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (_, i) => _attachmentThumb(i),
+              ),
+            ),
+            const SizedBox(height: 12),
           ],
+          if (_attachments.length < _maxAttachments)
+            Row(
+              children: [
+                Expanded(child: _mediaButton(icon: Icons.add_photo_alternate_outlined, label: 'Add photo', onTap: _pickImage)),
+                const SizedBox(width: 10),
+                Expanded(child: _mediaButton(icon: Icons.videocam_outlined, label: 'Add video', onTap: _pickVideo)),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _attachmentThumb(int index) {
+    final item = _attachments[index];
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: item.kind == _AttachmentKind.image
+              ? Image.memory(item.bytes, width: 108, height: 108, fit: BoxFit.cover)
+              : Container(
+                  width: 108,
+                  height: 108,
+                  color: AppColors.bgElevated,
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.play_circle_outline, color: AppColors.text, size: 32),
+                      SizedBox(height: 4),
+                      Text('Video', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                    ],
+                  ),
+                ),
         ),
+        Positioned(
+          top: -6,
+          right: -6,
+          child: GestureDetector(
+            onTap: () => _removeAttachment(index),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(color: AppColors.text, shape: BoxShape.circle),
+              child: const Icon(Icons.close, size: 14, color: AppColors.onPrimary),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _mediaButton({required IconData icon, required String label, required VoidCallback onTap}) {
+    return Material(
+      color: AppColors.bgElevated,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: AppColors.text, size: 26),
+              const SizedBox(height: 6),
+              Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _bottomBar() {
+    final bottom = MediaQuery.of(context).padding.bottom;
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + bottom),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        border: const Border(top: BorderSide(color: AppColors.border)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, -4))],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: Checkbox(
+                  value: _acceptedTerms,
+                  onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+                  activeColor: AppColors.primary,
+                  checkColor: AppColors.onPrimary,
+                  side: const BorderSide(color: AppColors.border),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _acceptedTerms = !_acceptedTerms),
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text('I accept the ', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                      GestureDetector(
+                        onTap: () => context.push('/profile/terms'),
+                        child: const Text('Terms & Conditions', style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w700, fontSize: 13, decoration: TextDecoration.underline)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _canPublish && !_publishing ? _publish : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.onPrimary,
+                disabledBackgroundColor: AppColors.bgElevated,
+                disabledForegroundColor: AppColors.textDim,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Text(
+                _publishing ? 'Publishing…' : 'Publish listing',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+              ),
+            ),
+          ),
+          if (_listingType == null)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('Select a listing type to continue', style: TextStyle(color: AppColors.textDim, fontSize: 11)),
+            ),
+        ],
       ),
     );
   }

@@ -23,12 +23,6 @@ class ProfileSettingsScreen extends StatelessWidget {
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger, foregroundColor: AppColors.text),
             onPressed: () async {
               Navigator.pop(ctx);
-              if (app.previewMode) {
-                app.logoutPreview();
-                if (!context.mounted) return;
-                context.go('/login');
-                return;
-              }
               final error = await app.deleteAccount();
               if (!context.mounted) return;
               if (error != null) {
@@ -80,10 +74,6 @@ class ProfileSettingsScreen extends StatelessWidget {
                 _card([
                   _verifiedRow(context, app),
                   _divider(),
-                  _row(context, Icons.person_add_outlined, 'Sign up screen', 'Preview registration UI', () => context.push('/signup')),
-                  _divider(),
-                  _row(context, Icons.tune, 'Feed settings', 'Filters & comfort', () => context.push('/profile/feed-settings')),
-                  _divider(),
                   _row(context, Icons.block, 'Blocked users', '${app.blockedUsers.length} blocked', () => context.push('/profile/blocked')),
                 ]),
                 const SizedBox(height: 16),
@@ -102,12 +92,6 @@ class ProfileSettingsScreen extends StatelessWidget {
                     'Log out',
                     null,
                     () async {
-                      if (app.previewMode) {
-                        app.logoutPreview();
-                        if (!context.mounted) return;
-                        context.go('/login');
-                        return;
-                      }
                       await app.logout();
                       if (!context.mounted) return;
                       context.go('/login');

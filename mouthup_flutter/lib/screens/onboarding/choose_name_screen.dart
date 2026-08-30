@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../models/social_profile.dart';
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/display_name.dart';
@@ -70,6 +71,7 @@ class _ChooseNameScreenState extends State<ChooseNameScreen> {
     final locked = app.usernameLocked;
 
     return ScreenWrapper(
+      scrollable: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -86,7 +88,7 @@ class _ChooseNameScreenState extends State<ChooseNameScreen> {
           Center(
             child: Column(
               children: [
-                UserAvatar(name: previewName, radius: 40),
+                UserAvatar(name: previewName, imageUrl: avatarUrlForUser(username.isEmpty ? previewName : username, displayName: previewName), radius: 40),
                 const SizedBox(height: 12),
                 Text(previewName, style: const TextStyle(color: AppColors.text, fontSize: 22, fontWeight: FontWeight.w700)),
                 if (username.isNotEmpty)
@@ -119,7 +121,7 @@ class _ChooseNameScreenState extends State<ChooseNameScreen> {
               helperStyle: TextStyle(color: AppColors.textDim, fontSize: 12),
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 32),
           PrimaryButton(
             title: 'Continue →',
             onPressed: () async {

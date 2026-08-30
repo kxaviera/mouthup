@@ -17,7 +17,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
     ),
     (
       '3. Public username',
-      'Your username is your public identity on MouthUp and cannot be changed. Other users see your username, profile type, city, and listings — not your email.',
+      'Your username is your public identity on ISZI and cannot be changed. Other users see your username, profile type, city, and listings — not your email.',
     ),
     (
       '4. How we use data',

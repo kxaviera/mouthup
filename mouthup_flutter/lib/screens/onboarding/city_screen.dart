@@ -34,6 +34,7 @@ class _CityScreenState extends State<CityScreen> {
     final canContinue = _city.text.trim().length >= 2;
 
     return ScreenWrapper(
+      scrollable: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -57,7 +58,7 @@ class _CityScreenState extends State<CityScreen> {
               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 32),
           PrimaryButton(
             title: 'Continue →',
             onPressed: canContinue

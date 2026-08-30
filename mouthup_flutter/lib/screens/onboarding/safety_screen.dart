@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../constants/app_brand.dart';
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/primary_button.dart';
@@ -33,7 +34,7 @@ class SafetyScreen extends StatelessWidget {
           const Text('Safe space rules', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.text)),
           const SizedBox(height: 8),
           const Text(
-            'MouthUp is calm, equal, and judgment-free — no influencer headache.',
+            '${AppBrand.name} is calm, equal, and judgment-free — no influencer headache.',
             style: TextStyle(color: AppColors.textMuted),
           ),
           const SizedBox(height: 24),

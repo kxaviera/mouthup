@@ -1,11 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:math';
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../constants/account_types.dart';
+import '../constants/app_brand.dart';
 import '../constants/chat_media.dart';
-import '../constants/demo_account.dart';
-import '../data/ui_preview_data.dart';
 import '../constants/listing_types.dart';
 import '../constants/moods.dart';
 import '../models/app_notification.dart';
@@ -23,9 +24,11 @@ import '../services/feed_preferences_storage.dart';
 import '../utils/feed_comfort.dart';
 import '../models/profile_review.dart';
 import '../models/review_request.dart';
+import '../models/service_catalog_item.dart';
 import '../models/social_profile.dart';
 import '../utils/hashtags.dart';
 import '../utils/display_name.dart';
+import '../utils/geo.dart';
 import '../utils/post_text.dart';
 
 class UserProfileInfo {
@@ -52,7 +55,7 @@ class UserProfileInfo {
   final int followingCount;
 }
 
-enum FeedTab { nearby, following }
+enum FeedTab { forYou, following }
 
 enum ProfileVoteType { like, dislike }
 
@@ -103,7 +106,10 @@ class AppState extends ChangeNotifier {
   String? profileBio;
   String? feedListingFilter;
   String searchQuery = '';
-  FeedTab feedTab = FeedTab.nearby;
+  List<MouthUpPost> _searchPostResults = [];
+  List<SocialProfile> _searchPeopleResults = [];
+  bool searchLoading = false;
+  FeedTab feedTab = FeedTab.forYou;
   AccountTypeId? onboardingAccountType;
   String? onboardingProfession;
   String? onboardingCity;
@@ -119,7 +125,6 @@ class AppState extends ChangeNotifier {
   bool pushNotificationsEnabled = true;
   bool ready = false;
   bool loading = false;
-  bool previewMode = false;
   String? lastError;
 
   final FeedPreferencesStorage _feedPrefs = FeedPreferencesStorage();
@@ -140,6 +145,9 @@ class AppState extends ChangeNotifier {
   final List<ReviewRequest> _reviewRequests = [];
   List<SocialProfile> _suggestedProfiles = [];
   List<String> _storyUsernames = [];
+  List<ServiceCatalogItem> _serviceSearchResults = [];
+  final Map<String, List<ServiceCatalogItem>> _userServices = {};
+  bool servicesLoading = false;
   final _random = Random();
 
   int get unreadNotificationCount => notifications.where((n) => !n.read).length;
@@ -164,7 +172,7 @@ class AppState extends ChangeNotifier {
       if (post.author == username) {
         return SocialProfile(
           username: username,
-          avatarUrl: avatarUrlForUser(username),
+          avatarUrl: avatarUrlForUser(username, displayName: post.displayAuthor),
           city: post.authorCity,
           accountType: post.authorAccountType,
           profession: post.authorProfession,
@@ -174,33 +182,116 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
+  String avatarForUser(String username, {String? displayName}) {
+    if (username == nickname && profileAvatarUrl != null && profileAvatarUrl!.isNotEmpty) {
+      return profileAvatarUrl!;
+    }
+    final social = _socialProfiles[username];
+    if (social?.avatarUrl != null && social!.avatarUrl!.isNotEmpty) return social.avatarUrl!;
+    return avatarUrlForUser(username, displayName: displayName ?? social?.screenName);
+  }
+
   void setSearchQuery(String value) {
     searchQuery = value;
+    if (value.trim().isEmpty) {
+      _searchPostResults = [];
+      _searchPeopleResults = [];
+    }
     notifyListeners();
+    runSearch(value);
+  }
+
+  GeoPoint? get _userGeoPoint => geocodePlace(userCity);
+
+  MouthUpPost _withDistance(MouthUpPost post) {
+    if (post.distanceKm != null) return post;
+    final userPoint = _userGeoPoint;
+    final postPoint = post.latitude != null && post.longitude != null
+        ? GeoPoint(lat: post.latitude!, lng: post.longitude!)
+        : geocodePlace(post.location ?? post.authorCity);
+    final km = distanceKmFromUser(userPoint: userPoint, postPoint: postPoint);
+    if (km == null) return post;
+    return MouthUpPost(
+      id: post.id,
+      title: post.title,
+      author: post.author,
+      content: post.content,
+      createdAt: post.createdAt,
+      authorScreenName: post.authorScreenName,
+      authorIsVerified: post.authorIsVerified,
+      userSaved: post.userSaved,
+      userLiked: post.userLiked,
+      imageUrls: post.imageUrls,
+      videoUrls: post.videoUrls,
+      mood: post.mood,
+      userSupportReaction: post.userSupportReaction,
+      listingType: post.listingType,
+      listingStatus: post.listingStatus,
+      price: post.price,
+      currency: post.currency,
+      rentPeriod: post.rentPeriod,
+      swapFor: post.swapFor,
+      location: post.location,
+      latitude: post.latitude ?? postPoint?.lat,
+      longitude: post.longitude ?? postPoint?.lng,
+      distanceKm: km,
+      viewCount: post.viewCount,
+      likeCount: post.likeCount,
+      commentCount: post.commentCount,
+      authorProfession: post.authorProfession,
+      authorCity: post.authorCity,
+      authorAccountType: post.authorAccountType,
+      requestedProfession: post.requestedProfession,
+    );
+  }
+
+  bool _isMarketplacePost(MouthUpPost post) {
+    final type = post.listingType?.toUpperCase();
+    if (type == null) return false;
+    return marketplaceListingTypes.any((t) => t.apiValue == type);
+  }
+
+  Future<void> runSearch(String query) async {
+    final q = query.trim();
+    if (q.isEmpty) return;
+
+    searchLoading = true;
+    notifyListeners();
+
+    try {
+      final results = await Future.wait([
+        _api.searchUsers(q),
+        _api.fetchFeed(q: q, feedMode: 'for_you'),
+      ]);
+      final userMaps = results[0] as List<Map<String, dynamic>>;
+      _searchPeopleResults = userMaps
+          .map((u) => SocialProfile(
+                username: u['username'] as String? ?? '',
+                screenName: u['screenName'] as String?,
+                avatarUrl: avatarUrlForUser(u['username'] as String? ?? ''),
+                city: u['city'] as String?,
+                bio: u['bio'] as String?,
+                verified: u['isVerified'] as bool? ?? false,
+              ))
+          .where((p) => p.username.isNotEmpty && p.username != nickname)
+          .toList();
+      _searchPostResults = (results[1] as List<MouthUpPost>).where(_isMarketplacePost).map(_withDistance).toList();
+    } on ApiException catch (e) {
+      lastError = e.message;
+    } finally {
+      searchLoading = false;
+      notifyListeners();
+    }
   }
 
   List<MouthUpPost> get searchResults {
-    final q = searchQuery.trim().toLowerCase();
-    if (q.isEmpty) return const [];
-    return posts
-        .where((p) =>
-            p.content.toLowerCase().contains(q) ||
-            (p.title?.toLowerCase().contains(q) ?? false) ||
-            (p.location?.toLowerCase().contains(q) ?? false) ||
-            p.author.toLowerCase().contains(q))
-        .toList();
+    if (searchQuery.trim().isEmpty) return const [];
+    return _searchPostResults;
   }
 
   List<SocialProfile> get searchUserResults {
-    final q = searchQuery.trim().toLowerCase();
-    if (q.isEmpty) return const [];
-    return _socialProfiles.values
-        .where((p) =>
-            p.username.toLowerCase().contains(q) ||
-            (p.city?.toLowerCase().contains(q) ?? false) ||
-            (p.bio?.toLowerCase().contains(q) ?? false))
-        .where((p) => p.username != nickname)
-        .toList();
+    if (searchQuery.trim().isEmpty) return const [];
+    return _searchPeopleResults;
   }
 
   ProfileVoteType? myProfileVote(String username) => _profileVotes[username];
@@ -247,16 +338,16 @@ class AppState extends ChangeNotifier {
   }
 
   List<MouthUpPost> feedPostsForTab(FeedTab tab) {
-    final sorted = [...posts]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final userHasGeo = _userGeoPoint != null;
+    final sorted = [...posts]
+        .where(_isMarketplacePost)
+        .map(_withDistance)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
     switch (tab) {
-      case FeedTab.nearby:
-        final city = userCity?.toLowerCase();
-        if (city == null || city.isEmpty) return sorted;
-        return sorted.where((p) {
-          final loc = p.location?.toLowerCase() ?? '';
-          final authorCity = p.authorCity?.toLowerCase() ?? '';
-          return loc.contains(city) || authorCity.contains(city);
-        }).toList();
+      case FeedTab.forYou:
+        return sorted.where((p) => isWithinFeedRadius(p.distanceKm, userHasGeo: userHasGeo)).toList();
       case FeedTab.following:
         return sorted
             .where((p) => p.author == nickname || _followingUsers.contains(p.author))
@@ -308,10 +399,15 @@ class AppState extends ChangeNotifier {
   Future<void> initialize() async {
     try {
       if (await _api.hasSession()) {
-        await _hydrateSession();
+        await _hydrateSession().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException('session hydrate'),
+        );
       }
     } catch (_) {
-      await _api.clearSession();
+      try {
+        await _api.clearSession();
+      } catch (_) {}
       _resetLocalSession();
     } finally {
       ready = true;
@@ -373,7 +469,9 @@ class AppState extends ChangeNotifier {
     final me = await _api.getMe();
     _applyUser(me);
     await loadFeedPreferences();
-    await refreshFeed();
+    try {
+      await refreshFeed();
+    } catch (_) {}
     try {
       await refreshBlocked();
     } catch (_) {}
@@ -386,11 +484,12 @@ class AppState extends ChangeNotifier {
     try {
       await refreshFollowingGraph();
     } catch (_) {}
-    await _connectRealtime();
+    try {
+      await _connectRealtime();
+    } catch (_) {}
   }
 
   Future<void> refreshFollowingGraph() async {
-    if (previewMode) return;
     final following = await _api.fetchFollowing();
     final followers = await _api.fetchFollowers();
     _followingUsers
@@ -403,7 +502,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> loadPublicProfile(String username) async {
-    if (previewMode || isSelf(username)) return;
+    if (isSelf(username)) return;
     try {
       final data = await _api.fetchPublicProfile(username);
       final name = data['username'] as String? ?? username;
@@ -485,7 +584,7 @@ class AppState extends ChangeNotifier {
   }
 
   void _onFeedNew(String event, dynamic data) {
-    if (previewMode || data is! Map) return;
+    if (data is! Map) return;
     try {
       final post = MouthUpPost.fromJson(Map<String, dynamic>.from(data));
       if (isBlocked(post.author)) return;
@@ -495,7 +594,7 @@ class AppState extends ChangeNotifier {
   }
 
   void _onFeedUpdated(String event, dynamic data) {
-    if (previewMode || data is! Map) return;
+    if (data is! Map) return;
     try {
       final updated = MouthUpPost.fromJson(Map<String, dynamic>.from(data));
       posts = posts.map((p) => p.id == updated.id ? updated : p).toList();
@@ -504,7 +603,7 @@ class AppState extends ChangeNotifier {
   }
 
   void _onFeedRemoved(String event, dynamic data) {
-    if (previewMode || data is! Map) return;
+    if (data is! Map) return;
     final id = data['id'] as String?;
     if (id == null) return;
     posts = posts.where((p) => p.id != id).toList();
@@ -559,7 +658,7 @@ class AppState extends ChangeNotifier {
   }
 
   void _onFollowNew(String event, dynamic data) {
-    if (previewMode || data is! Map) return;
+    if (data is! Map) return;
     final map = Map<String, dynamic>.from(data);
     if (map['following'] != true) return;
     followerCount++;
@@ -578,7 +677,6 @@ class AppState extends ChangeNotifier {
     String? listingType,
     String? city,
   }) async {
-    if (previewMode) return;
     if (!isLoggedIn) return;
     loading = true;
     notifyListeners();
@@ -588,6 +686,8 @@ class AppState extends ChangeNotifier {
         q: q,
         listingType: listingType,
         city: city ?? userCity,
+        feedMode: _feedModeForTab(feedTab),
+        radiusKm: feedRadiusKm.round(),
       );
       _trendingHashtags = await _api.fetchTrendingHashtags();
       lastError = null;
@@ -596,6 +696,15 @@ class AppState extends ChangeNotifier {
     } finally {
       loading = false;
       notifyListeners();
+    }
+  }
+
+  String _feedModeForTab(FeedTab tab) {
+    switch (tab) {
+      case FeedTab.following:
+        return 'following';
+      case FeedTab.forYou:
+        return 'for_you';
     }
   }
 
@@ -618,7 +727,6 @@ class AppState extends ChangeNotifier {
 
   Future<void> loadPostDetail(String postId) async {
     if (!isLoggedIn) return;
-    if (previewMode && getPost(postId) != null) return;
     try {
       final post = await _api.fetchPost(postId);
       _upsertPost(post);
@@ -632,7 +740,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> loadMyPosts() async {
-    if (previewMode || !isLoggedIn) return;
+    if (!isLoggedIn) return;
     try {
       final mine = await _api.fetchMyPosts();
       for (final p in mine) {
@@ -645,7 +753,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> loadSavedPosts() async {
-    if (previewMode || !isLoggedIn) return;
+    if (!isLoggedIn) return;
     try {
       final saved = await _api.fetchSavedPosts();
       for (final p in saved) {
@@ -658,7 +766,7 @@ class AppState extends ChangeNotifier {
   }
 
   void _upsertPost(MouthUpPost post) {
-    posts = [post, ...posts.where((p) => p.id != post.id)];
+    posts = [_withDistance(post), ...posts.where((p) => p.id != post.id)];
   }
 
   void markNotificationRead(String id) {
@@ -690,7 +798,6 @@ class AppState extends ChangeNotifier {
   }
 
   Future<String?> blockUser(String name) async {
-    if (previewMode) return 'Not available in preview mode';
     try {
       await _api.blockUser(name);
       await refreshBlocked();
@@ -701,7 +808,6 @@ class AppState extends ChangeNotifier {
   }
 
   Future<String?> unblockUser(String name) async {
-    if (previewMode) return 'Not available in preview mode';
     try {
       await _api.unblockUser(name);
       await refreshBlocked();
@@ -716,7 +822,11 @@ class AppState extends ChangeNotifier {
   bool isSelf(String user) => user == nickname;
 
   List<MouthUpPost> postsByUser(String user) {
-    return posts.where((p) => p.author == user).toList()
+    return posts
+        .where((p) => p.author == user)
+        .where(_isMarketplacePost)
+        .map(_withDistance)
+        .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
@@ -762,27 +872,10 @@ class AppState extends ChangeNotifier {
     if (isSelf(username)) {
       return _followerUsers.toList()..sort();
     }
-    final social = socialProfile(username);
-    if (social != null && previewMode) {
-      return uiPreviewFollowers().take(social.followerCount.clamp(0, 20)).toList();
-    }
     return const [];
   }
 
   Future<void> toggleFollow(String username) async {
-    if (previewMode) {
-      if (_followingUsers.contains(username)) {
-        _followingUsers.remove(username);
-        followingCount = followingCount > 0 ? followingCount - 1 : 0;
-        _updateProfileFollowers(username, 1, subtract: true);
-      } else {
-        _followingUsers.add(username);
-        followingCount++;
-        _updateProfileFollowers(username, 1);
-      }
-      notifyListeners();
-      return;
-    }
     try {
       if (_followingUsers.contains(username)) {
         await _api.unfollowUser(username);
@@ -827,6 +920,85 @@ class AppState extends ChangeNotifier {
 
   List<ProfileReview> reviewsForUser(String username) {
     return socialProfile(username)?.reviews ?? const [];
+  }
+
+  bool get isServiceProvider =>
+      accountType == 'SERVICE_PROVIDER' || accountType == 'BOTH';
+
+  List<ServiceCatalogItem> get serviceSearchResults => _serviceSearchResults;
+
+  List<ServiceCatalogItem> servicesForUser(String username) =>
+      _userServices[username] ?? const [];
+
+  Future<void> searchServices({String? q, String? profession, String? city}) async {
+    servicesLoading = true;
+    notifyListeners();
+    try {
+      _serviceSearchResults = await _api.searchServiceCatalog(
+        q: q,
+        profession: profession,
+        city: city,
+      );
+    } on ApiException catch (e) {
+      lastError = e.message;
+    } finally {
+      servicesLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadUserServices(String username) async {
+    if (_userServices.containsKey(username)) return;
+    try {
+      final items = await _api.fetchUserServices(username);
+      _userServices[username] = items;
+      notifyListeners();
+    } on ApiException catch (e) {
+      lastError = e.message;
+      notifyListeners();
+    }
+  }
+
+  Future<String?> createServiceCatalog(ServiceCatalogItem item) async {
+    try {
+      final created = await _api.createServiceCatalog(item);
+      _userServices.putIfAbsent(nickname, () => []).insert(0, created);
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  Future<String?> updateServiceCatalog(String id, ServiceCatalogItem item) async {
+    try {
+      final updated = await _api.updateServiceCatalog(id, item);
+      final list = _userServices[nickname];
+      if (list != null) {
+        final i = list.indexWhere((s) => s.id == id);
+        if (i >= 0) list[i] = updated;
+      }
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  Future<String?> deleteServiceCatalog(String id) async {
+    try {
+      await _api.deleteServiceCatalog(id);
+      _userServices[nickname]?.removeWhere((s) => s.id == id);
+      _serviceSearchResults.removeWhere((s) => s.id == id);
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    }
+  }
+
+  void invalidateUserServices(String username) {
+    _userServices.remove(username);
   }
 
   List<ReviewRequest> reviewRequestsInChat(String peer) {
@@ -943,18 +1115,6 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _appendDmSystemNote(String peer, String text) async {
-    if (previewMode) {
-      final msg = DirectMessage(
-        id: 'sys-${DateTime.now().millisecondsSinceEpoch}',
-        from: nickname,
-        to: peer,
-        text: text,
-        createdAt: DateTime.now(),
-        type: ChatMessageType.system,
-      );
-      _dmThreads[peer] = [...(_dmThreads[peer] ?? const []), msg];
-      return;
-    }
     await _sendDirect(peer, text, type: ChatMessageType.system);
   }
 
@@ -1050,21 +1210,6 @@ class AppState extends ChangeNotifier {
     }
 
     if (type == ChatMessageType.system && trimmed.isEmpty) return null;
-
-    if (previewMode) {
-      final msg = DirectMessage(
-        id: 'local-${DateTime.now().millisecondsSinceEpoch}',
-        from: nickname,
-        to: peer,
-        text: trimmed.isEmpty ? (mediaUrl ?? '') : trimmed,
-        createdAt: DateTime.now(),
-        type: type,
-        mediaUrl: mediaUrl,
-      );
-      _dmThreads[peer] = [...(_dmThreads[peer] ?? const []), msg];
-      notifyListeners();
-      return null;
-    }
 
     try {
       final apiType = switch (type) {
@@ -1311,64 +1456,6 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<String?> loginAsDemo() async {
-    if (kIsWeb) {
-      enterUiPreview();
-      return null;
-    }
-    loading = true;
-    notifyListeners();
-    try {
-      final auth = await _api.loginAsDemo();
-      await _completeAuthSession(auth);
-      return null;
-    } on ApiException catch (e) {
-      enterUiPreview();
-      return null;
-    } catch (_) {
-      enterUiPreview();
-      return null;
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
-  }
-
-  void enterUiPreview() {
-    previewMode = true;
-    isLoggedIn = true;
-    emailVerified = true;
-    onboardingDone = true;
-    nickname = DemoAccount.username;
-    screenName = 'Cool Breeze';
-    usernameLocked = true;
-    email = DemoAccount.email;
-    accountType = 'BOTH';
-    userCity = 'Mumbai';
-    profession = null;
-    profileBio = 'Buy & sell locally in Mumbai. Open to swaps and good deals 🤝';
-    profileAvatarUrl = avatarUrlForUser(DemoAccount.username);
-    userVerified = true;
-    followerCount = 128;
-    followingCount = 54;
-    posts = uiPreviewPosts();
-    _socialProfiles
-      ..clear()
-      ..addAll(uiPreviewProfiles());
-    _suggestedProfiles = uiPreviewSuggestions();
-    _storyUsernames = [DemoAccount.username, ...uiPreviewFollowing()];
-    _followingUsers
-      ..clear()
-      ..addAll(uiPreviewFollowing());
-    _followerUsers
-      ..clear()
-      ..addAll(uiPreviewFollowers());
-    _trendingHashtags = ['#sale', '#rent', '#service', '#giveaway'];
-    lastError = null;
-    loading = false;
-    notifyListeners();
-  }
-
   Future<String?> signup({required String emailInput, required String password}) async {
     loading = true;
     notifyListeners();
@@ -1434,7 +1521,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<String?> completeOnboarding() async {
-    if (onboardingAccountType == null) return 'Pick how you will use MouthUp';
+    if (onboardingAccountType == null) return 'Pick how you will use ${AppBrand.name}';
     if (onboardingAccountType == AccountTypeId.serviceProvider && onboardingProfession == null) {
       return 'Pick your profession';
     }
@@ -1462,12 +1549,6 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void logoutPreview() {
-    _disconnectRealtime();
-    _resetLocalSession();
-    notifyListeners();
-  }
-
   Future<void> logout() async {
     _disconnectRealtime();
     if (firebaseAuthAvailable) {
@@ -1493,7 +1574,6 @@ class AppState extends ChangeNotifier {
   }
 
   void _resetLocalSession() {
-    previewMode = false;
     isLoggedIn = false;
     emailVerified = false;
     onboardingDone = false;
@@ -1507,6 +1587,10 @@ class AppState extends ChangeNotifier {
     onboardingAccountType = null;
     onboardingProfession = null;
     onboardingCity = null;
+    searchQuery = '';
+    _searchPostResults = [];
+    _searchPeopleResults = [];
+    searchLoading = false;
     posts = [];
     comments = [];
     notifications = [];
@@ -1528,6 +1612,9 @@ class AppState extends ChangeNotifier {
     profileAvatarUrl = null;
     _suggestedProfiles = [];
     _storyUsernames = [];
+    _serviceSearchResults = [];
+    _userServices.clear();
+    servicesLoading = false;
   }
 
   bool isPostAuthor(String postId) {
@@ -1535,10 +1622,18 @@ class AppState extends ChangeNotifier {
     return post?.author == nickname;
   }
 
-  List<MouthUpPost> get myPosts => posts.where((p) => p.author == nickname).toList()
+  List<MouthUpPost> get myPosts => posts
+      .where((p) => p.author == nickname)
+      .where(_isMarketplacePost)
+      .map(_withDistance)
+      .toList()
     ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-  List<MouthUpPost> get savedPosts => posts.where((p) => p.userSaved).toList();
+  List<MouthUpPost> get savedPosts => posts
+      .where((p) => p.userSaved)
+      .where(_isMarketplacePost)
+      .map(_withDistance)
+      .toList();
 
   int postDiscussionScore(String postId) => commentCount(postId);
 
@@ -1550,6 +1645,7 @@ class AppState extends ChangeNotifier {
     RentPeriodId? rentPeriod,
     String? swapFor,
     String? location,
+    String? requestedProfession,
     List<Uint8List> images = const [],
     List<Uint8List> videos = const [],
   }) async {
@@ -1581,6 +1677,7 @@ class AppState extends ChangeNotifier {
         rentPeriod: rentPeriodToApi(rentPeriod),
         swapFor: swapFor,
         location: location ?? userCity,
+        requestedProfession: requestedProfession,
         media: media,
       );
       _upsertPost(created);
@@ -1596,11 +1693,6 @@ class AppState extends ChangeNotifier {
     final post = getPost(postId);
     if (post == null || !post.isListing) return 'Not a listing';
     final next = post.isOpen ? 'CLOSED' : 'OPEN';
-    if (previewMode) {
-      posts = posts.map((p) => p.id == postId ? p.copyWith(listingStatus: next) : p).toList();
-      notifyListeners();
-      return null;
-    }
     try {
       final updated = await _api.updateListingStatus(postId, next);
       posts = posts.map((p) => p.id == postId ? updated : p).toList();
@@ -1612,20 +1704,6 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> toggleLikePost(String postId) async {
-    if (previewMode) {
-      posts = posts
-          .map(
-            (p) => p.id == postId
-                ? p.copyWith(
-                    userLiked: !p.userLiked,
-                    likeCount: (p.likeCount + (p.userLiked ? -1 : 1)).clamp(0, 999999),
-                  )
-                : p,
-          )
-          .toList();
-      notifyListeners();
-      return;
-    }
     try {
       final liked = await _api.toggleLike(postId);
       posts = posts
@@ -1680,7 +1758,7 @@ class AppState extends ChangeNotifier {
 
   MouthUpPost? getPost(String id) {
     try {
-      return posts.firstWhere((p) => p.id == id);
+      return _withDistance(posts.firstWhere((p) => p.id == id));
     } catch (_) {
       return null;
     }
@@ -1704,13 +1782,6 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> toggleSavePost(String postId) async {
-    if (previewMode) {
-      posts = posts
-          .map((p) => p.id == postId ? p.copyWith(userSaved: !p.userSaved) : p)
-          .toList();
-      notifyListeners();
-      return;
-    }
     try {
       final saved = await _api.toggleSave(postId);
       posts = posts.map((p) => p.id == postId ? p.copyWith(userSaved: saved) : p).toList();

@@ -51,7 +51,7 @@ export class CommentsService {
         type: NotificationType.COMMENT,
         title: 'New comment',
         body: `${author} commented on your post`,
-        route: `/posts/${postId}`,
+        route: `/post/${postId}`,
       });
     }
 

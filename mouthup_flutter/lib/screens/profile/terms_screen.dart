@@ -9,15 +9,15 @@ class TermsScreen extends StatelessWidget {
   static const _sections = [
     (
       '1. Acceptance',
-      'By using MouthUp you agree to these terms. MouthUp is a local marketplace and community platform for buying, selling, renting, swapping, and offering services.',
+      'By using ISZI you agree to these terms. ISZI is a local marketplace and community platform for buying, selling, renting, swapping, and offering services.',
     ),
     (
       '2. Public profiles',
-      'Your username is your public identity on MouthUp. It is assigned once and cannot be changed. Be honest in listings and respectful in messages.',
+      'Your username is your public identity on ISZI. It is assigned once and cannot be changed. Be honest in listings and respectful in messages.',
     ),
     (
       '3. Listings & transactions',
-      'Sellers and service providers are responsible for the accuracy of their listings. MouthUp facilitates discovery and messaging — we are not a party to transactions between users.',
+      'Sellers and service providers are responsible for the accuracy of their listings. ISZI facilitates discovery and messaging — we are not a party to transactions between users.',
     ),
     (
       '4. Acceptable content',
@@ -25,11 +25,11 @@ class TermsScreen extends StatelessWidget {
     ),
     (
       '5. Conduct',
-      'Do not harass, threaten, spam, or impersonate others. Block users you do not wish to interact with. MouthUp is not professional legal, medical, or financial advice.',
+      'Do not harass, threaten, spam, or impersonate others. Block users you do not wish to interact with. ISZI is not professional legal, medical, or financial advice.',
     ),
     (
       '6. Your content',
-      'You retain ownership of what you post. By posting, you grant MouthUp a license to display your content within the app. You are responsible for what you share.',
+      'You retain ownership of what you post. By posting, you grant ISZI a license to display your content within the app. You are responsible for what you share.',
     ),
     (
       '7. Account & data',
@@ -37,7 +37,7 @@ class TermsScreen extends StatelessWidget {
     ),
     (
       '8. Disclaimer',
-      'MouthUp is provided "as is" without warranties. We are not liable for user-generated content, listings, or interactions between users.',
+      'ISZI is provided "as is" without warranties. We are not liable for user-generated content, listings, or interactions between users.',
     ),
   ];
 

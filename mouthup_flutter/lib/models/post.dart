@@ -55,6 +55,10 @@ class MouthUpPost {
     this.authorProfession,
     this.authorCity,
     this.authorAccountType,
+    this.requestedProfession,
+    this.latitude,
+    this.longitude,
+    this.distanceKm,
   });
 
   final String id;
@@ -83,6 +87,10 @@ class MouthUpPost {
   final String? authorProfession;
   final String? authorCity;
   final String? authorAccountType;
+  final String? requestedProfession;
+  final double? latitude;
+  final double? longitude;
+  final double? distanceKm;
 
   String get displayAuthor {
     final name = authorScreenName?.trim();
@@ -162,6 +170,10 @@ class MouthUpPost {
       authorProfession: authorProfession,
       authorCity: authorCity,
       authorAccountType: authorAccountType,
+      requestedProfession: requestedProfession,
+      latitude: latitude,
+      longitude: longitude,
+      distanceKm: distanceKm,
     );
   }
 
@@ -192,6 +204,10 @@ class MouthUpPost {
         authorProfession: json['authorProfession'] as String?,
         authorCity: json['authorCity'] as String?,
         authorAccountType: json['authorAccountType'] as String?,
+        requestedProfession: json['requestedProfession'] as String?,
+        latitude: json['latitude'] == null ? null : (json['latitude'] as num).toDouble(),
+        longitude: json['longitude'] == null ? null : (json['longitude'] as num).toDouble(),
+        distanceKm: json['distanceKm'] == null ? null : (json['distanceKm'] as num).toDouble(),
       );
 }
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../constants/feature_flags.dart';
+import '../models/service_catalog_item.dart';
 import '../providers/app_state.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/login_screen.dart';
@@ -31,7 +33,9 @@ import '../screens/profile/user_profile_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/tabs/feed_screen.dart';
 import '../screens/tabs/search_screen.dart';
+import '../screens/tabs/services_screen.dart';
 import '../screens/tabs/profile_screen.dart';
+import '../screens/services/add_service_catalog_screen.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 
@@ -43,6 +47,17 @@ GoRouter createRouter(AppState app) {
     redirect: (context, state) {
       final loc = state.matchedLocation;
       const public = {'/', '/login', '/signup', '/forgot-password'};
+
+      if (!app.ready) {
+        return loc == '/' ? null : '/';
+      }
+
+      if (loc == '/') {
+        if (!app.isLoggedIn) return '/login';
+        if (!app.emailVerified) return '/verify-email';
+        if (!app.onboardingDone) return '/onboarding/nickname';
+        return '/home';
+      }
 
       if (!app.isLoggedIn) {
         if (public.contains(loc) || loc.startsWith('/reset-password')) return null;
@@ -65,6 +80,11 @@ GoRouter createRouter(AppState app) {
       }
 
       if (loc == '/signup') return null;
+
+      if (!servicesMarketplaceEnabled &&
+          (loc == '/services/add' || (loc.startsWith('/services/') && loc.endsWith('/edit')))) {
+        return '/home';
+      }
 
       if (loc == '/login' ||
           loc == '/verify-email' ||
@@ -128,6 +148,14 @@ GoRouter createRouter(AppState app) {
               ),
             ],
           ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/services',
+                pageBuilder: (_, state) => const NoTransitionPage(child: ServicesScreen()),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(path: '/profile/posts', builder: (_, s) => const MyPostsScreen()),
@@ -146,9 +174,28 @@ GoRouter createRouter(AppState app) {
       GoRoute(path: '/profile/privacy', builder: (_, s) => const PrivacyPolicyScreen()),
       GoRoute(path: '/profile/feed-settings', builder: (_, s) => const FeedSettingsScreen()),
       GoRoute(path: '/notifications', builder: (_, s) => const NotificationsScreen()),
+      GoRoute(
+        path: '/posts/:id',
+        redirect: (_, s) => '/post/${s.pathParameters['id']}',
+      ),
       GoRoute(path: '/rooms', redirect: (_, s) => '/chats'),
       GoRoute(path: '/messages', redirect: (_, s) => '/chats'),
+      GoRoute(
+        path: '/messages/:peer',
+        redirect: (_, s) {
+          final peer = s.pathParameters['peer'] ?? '';
+          if (peer.isEmpty || peer == 'chat') return '/chats';
+          return '/messages/chat?peer=${Uri.encodeComponent(peer)}';
+        },
+      ),
       GoRoute(path: '/create-post', builder: (_, s) => const CreatePostScreen()),
+      GoRoute(path: '/services/add', builder: (_, s) => const AddServiceCatalogScreen()),
+      GoRoute(
+        path: '/services/:id/edit',
+        builder: (_, s) => AddServiceCatalogScreen(
+          existing: s.extra as ServiceCatalogItem?,
+        ),
+      ),
       GoRoute(
         path: '/post/:id/edit',
         builder: (_, s) => EditPostScreen(postId: s.pathParameters['id']!),

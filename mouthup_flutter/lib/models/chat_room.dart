@@ -1,3 +1,4 @@
+import '../constants/app_brand.dart';
 import '../constants/moods.dart';
 import 'chat_message.dart';
 
@@ -7,7 +8,7 @@ class ChatRoomSession {
     this.timeLeftSeconds = 15 * 60,
     List<ChatMessage>? messages,
     this.safetyNoticeShown = false,
-  }) : messages = messages ?? List.from(mockMessages);
+  }) : messages = messages ?? const [];
 
   final String postId;
   int timeLeftSeconds;
@@ -20,9 +21,6 @@ class ChatRoomSession {
     timeLeftSeconds += minutes * 60;
   }
 }
-
-/// Demo room when joining via quick match (no post).
-const demoRoomPostId = 'demo-room';
 
 String moodRoomId(MoodId mood) => 'mood-${mood.name}';
 
@@ -40,7 +38,7 @@ MoodId? moodIdFromRoom(String roomId) {
 List<ChatMessage> moodRoomSeedMessages(MoodId mood) {
   final label = moodById(mood).label;
   return [
-    ChatMessage(id: 'm0', nickname: 'MouthUp', text: 'Welcome to the $label room — anonymous & 15 min ⏱', isSystem: true),
+    ChatMessage(id: 'm0', nickname: AppBrand.name, text: 'Welcome to the $label room — anonymous & 15 min ⏱', isSystem: true),
     ChatMessage(id: 'm1', nickname: 'SilentOwl', text: 'Glad I found people feeling the same right now'),
     ChatMessage(id: 'm2', nickname: 'NightWalker', text: '🫂 Same $label mood tonight', type: ChatMessageType.emoji),
   ];

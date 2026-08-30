@@ -24,6 +24,16 @@ const professionOptions = [
   ProfessionOption(apiValue: 'GARDENER', label: 'Gardener', emoji: '🌿'),
   ProfessionOption(apiValue: 'BEAUTICIAN', label: 'Beautician', emoji: '💇'),
   ProfessionOption(apiValue: 'PHOTOGRAPHER', label: 'Photographer', emoji: '📷'),
+  ProfessionOption(apiValue: 'MAID', label: 'Maid / House help', emoji: '🏠'),
+  ProfessionOption(apiValue: 'NURSE', label: 'Nurse / Caregiver', emoji: '🩺'),
+  ProfessionOption(apiValue: 'PEST_CONTROL', label: 'Pest control', emoji: '🐜'),
+  ProfessionOption(apiValue: 'BABYSITTER', label: 'Babysitter', emoji: '👶'),
+  ProfessionOption(apiValue: 'ELDER_CARE', label: 'Elder care', emoji: '🤝'),
+  ProfessionOption(apiValue: 'TAILOR', label: 'Tailor', emoji: '🧵'),
+  ProfessionOption(apiValue: 'LAUNDRY', label: 'Laundry', emoji: '🧺'),
+  ProfessionOption(apiValue: 'SECURITY', label: 'Security guard', emoji: '🛡️'),
+  ProfessionOption(apiValue: 'EVENT_PLANNER', label: 'Event planner', emoji: '🎉'),
+  ProfessionOption(apiValue: 'PHYSIO', label: 'Physiotherapist', emoji: '💪'),
   ProfessionOption(apiValue: 'OTHER', label: 'Other', emoji: '✨'),
 ];
 

@@ -55,8 +55,11 @@ class _SavedPostsScreenState extends State<SavedPostsScreen> {
                       itemCount: saved.length,
                       itemBuilder: (_, i) {
                         final post = saved[i];
+                        final profile = app.socialProfile(post.author);
                         return PostTile(
                           post: post,
+                          authorAvatarUrl: profile?.avatarUrl ?? app.avatarForUser(post.author, displayName: post.displayAuthor),
+                          authorVerified: post.authorIsVerified || (profile?.verified ?? false),
                           showDivider: i < saved.length - 1,
                           onTap: () => context.push('/post/${post.id}'),
                           onSave: () async {

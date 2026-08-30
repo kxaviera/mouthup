@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_state.dart';
 import '../../theme/app_theme.dart';
+import '../../constants/app_brand.dart';
 import '../../widgets/mouthup_logo.dart';
 import '../../widgets/screen_wrapper.dart';
 
@@ -32,7 +33,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Future<void> _boot() async {
     final app = context.read<AppState>();
     await app.initialize();
-    await Future.delayed(const Duration(milliseconds: 2500));
+    if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     _navigate();
   }
@@ -71,11 +73,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    MouthUpLogo(size: 100, iconOnly: true),
+                    const IsziFullLogo(size: 104),
                     SizedBox(height: 16),
-                    const Text(
-                      'Share • Connect',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 14, letterSpacing: 1),
+                    Text(
+                      AppBrand.tagline,
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 14, letterSpacing: 0.5),
                     ),
                   ],
                 ),

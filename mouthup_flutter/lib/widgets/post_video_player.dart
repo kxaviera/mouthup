@@ -6,10 +6,11 @@ import '../utils/youtube.dart';
 
 /// Inline network video for feed and post detail.
 class PostVideoPlayer extends StatefulWidget {
-  const PostVideoPlayer({super.key, required this.url, this.height = 220});
+  const PostVideoPlayer({super.key, required this.url, this.height = 220, this.edgeToEdge = false});
 
   final String url;
   final double height;
+  final bool edgeToEdge;
 
   @override
   State<PostVideoPlayer> createState() => _PostVideoPlayerState();
@@ -182,11 +183,13 @@ class _PostVideoPlayerState extends State<PostVideoPlayer> {
     return Container(
       height: widget.height,
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.bgElevated,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
+      decoration: widget.edgeToEdge
+          ? const BoxDecoration(color: AppColors.bgElevated)
+          : BoxDecoration(
+              color: AppColors.bgElevated,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
       clipBehavior: Clip.antiAlias,
       child: child,
     );

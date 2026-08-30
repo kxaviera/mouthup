@@ -41,6 +41,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     final app = context.watch<AppState>();
 
     return ScreenWrapper(
+      scrollable: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -77,6 +78,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
             },
             child: const Text('Resend code'),
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );

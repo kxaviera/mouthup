@@ -37,7 +37,7 @@ export default function LoginPage() {
         className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-950 p-8"
       >
         <h1 className="text-2xl font-bold text-white">ISZI Admin</h1>
-        <p className="mt-1 text-sm text-zinc-500">Sign in to manage the marketplace</p>
+        <p className="mt-1 text-sm text-zinc-500">Sign in to manage the ISZI marketplace</p>
 
         <label className="mt-6 block text-sm text-zinc-400">Email</label>
         <input

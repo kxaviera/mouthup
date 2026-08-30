@@ -7,7 +7,7 @@ const nav = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/reports', label: 'Reports' },
   { href: '/users', label: 'Users' },
-  { href: '/posts', label: 'Posts' },
+  { href: '/posts', label: 'Listings' },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -25,7 +25,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <aside className="flex w-56 flex-col border-r border-zinc-800 bg-zinc-950 p-4">
         <div className="mb-8 px-2">
           <p className="text-lg font-bold tracking-tight">ISZI</p>
-          <p className="text-xs text-zinc-500">Admin Panel</p>
+          <p className="text-xs text-zinc-500">Marketplace Admin</p>
         </div>
         <nav className="flex flex-1 flex-col gap-1">
           {nav.map((item) => {
@@ -67,14 +67,22 @@ function StatCard({ label, value }: { label: string; value: number }) {
 export function StatGrid({
   stats,
 }: {
-  stats: { users: number; posts: number; pendingReports: number; messages: number; verifiedUsers?: number };
+  stats: {
+    users: number;
+    posts: number;
+    listings: number;
+    pendingReports: number;
+    messages: number;
+    verifiedUsers?: number;
+  };
 }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
       <StatCard label="Users" value={stats.users} />
-      <StatCard label="Verified" value={stats.verifiedUsers ?? 0} />
-      <StatCard label="Posts" value={stats.posts} />
-      <StatCard label="Pending Reports" value={stats.pendingReports} />
+      <StatCard label="Verified sellers" value={stats.verifiedUsers ?? 0} />
+      <StatCard label="Listings" value={stats.listings} />
+      <StatCard label="All posts" value={stats.posts} />
+      <StatCard label="Pending reports" value={stats.pendingReports} />
       <StatCard label="Messages" value={stats.messages} />
     </div>
   );

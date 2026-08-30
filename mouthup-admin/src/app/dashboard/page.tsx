@@ -56,7 +56,7 @@ export default function DashboardPage() {
           </span>
         )}
       </div>
-      <p className="mt-1 text-zinc-500">Platform overview — updates in real time</p>
+      <p className="mt-1 text-zinc-500">ISZI marketplace overview — live stats from production</p>
       <div className="mt-8">
         {stats ? (
           <StatGrid stats={stats} />

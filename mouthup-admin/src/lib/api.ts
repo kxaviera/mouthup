@@ -89,9 +89,14 @@ export async function login(email: string, password: string) {
 }
 
 export async function getDashboard() {
-  return apiFetch<{ users: number; posts: number; pendingReports: number; messages: number; verifiedUsers: number }>(
-    '/admin/dashboard',
-  );
+  return apiFetch<{
+    users: number;
+    posts: number;
+    listings: number;
+    pendingReports: number;
+    messages: number;
+    verifiedUsers: number;
+  }>('/admin/dashboard');
 }
 
 export async function getReports() {
@@ -132,6 +137,9 @@ export async function searchUsers(q: string) {
       signupCity: string | null;
       authProvider: string | null;
       isVerified: boolean;
+      city: string | null;
+      accountType: string | null;
+      profession: string | null;
     }[]
   >(`/admin/users?q=${encodeURIComponent(q)}`);
 }
@@ -163,9 +171,17 @@ export async function searchPosts(q: string, limit = 100) {
   return apiFetch<
     {
       id: string;
+      title: string | null;
       content: string;
+      listingType: string | null;
+      listingStatus: string;
+      price: string | null;
+      currency: string;
+      rentPeriod: string | null;
+      location: string | null;
+      viewCount: number;
       createdAt: string;
-      author: { username: string | null; email: string; isBot: boolean };
+      author: { username: string | null; email: string; isBot: boolean; city: string | null };
       media: { type: string; url: string }[];
     }[]
   >(`/admin/posts?q=${encodeURIComponent(q)}&limit=${limit}`);

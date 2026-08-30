@@ -23,10 +23,10 @@ Use the admin account seeded by `mouthup-api` (set `ADMIN_EMAIL` / `ADMIN_PASSWO
 
 | Screen | Purpose |
 |--------|---------|
-| Dashboard | User/post/report/message counts |
+| Dashboard | Users, listings, reports, messages (live) |
+| Listings | Marketplace feed with title, price, location, status |
 | Reports | Review and resolve flagged content |
 | Users | Search, verify badges, ban users |
-| Posts | Search, delete posts |
 
 ## Stack
 

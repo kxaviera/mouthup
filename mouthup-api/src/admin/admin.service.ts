@@ -28,11 +28,13 @@ export class AdminService {
 
   async dashboard() {
 
-    const [users, posts, pendingReports, messages, verifiedUsers] = await Promise.all([
+    const [users, posts, listings, pendingReports, messages, verifiedUsers] = await Promise.all([
 
       this.prisma.user.count({ where: { role: UserRole.USER } }),
 
       this.prisma.post.count({ where: { deletedAt: null } }),
+
+      this.prisma.post.count({ where: { deletedAt: null, listingType: { not: null } } }),
 
       this.prisma.report.count({ where: { status: ReportStatus.PENDING } }),
 
@@ -44,7 +46,7 @@ export class AdminService {
 
 
 
-    return { users, posts, pendingReports, messages, verifiedUsers };
+    return { users, posts, listings, pendingReports, messages, verifiedUsers };
 
   }
 
@@ -200,6 +202,12 @@ export class AdminService {
 
         isVerified: true,
 
+        city: true,
+
+        accountType: true,
+
+        profession: true,
+
       },
 
     });
@@ -276,7 +284,15 @@ export class AdminService {
 
             deletedAt: null,
 
-            content: { contains: trimmed, mode: 'insensitive' },
+            OR: [
+
+              { content: { contains: trimmed, mode: 'insensitive' } },
+
+              { title: { contains: trimmed, mode: 'insensitive' } },
+
+              { location: { contains: trimmed, mode: 'insensitive' } },
+
+            ],
 
           }
 
@@ -286,11 +302,33 @@ export class AdminService {
 
       orderBy: { createdAt: 'desc' },
 
-      include: {
+      select: {
 
-        author: { select: { username: true, email: true, isBot: true } },
+        id: true,
 
-        media: { select: { type: true, url: true }, orderBy: { sortOrder: 'asc' }, take: 3 },
+        title: true,
+
+        content: true,
+
+        listingType: true,
+
+        listingStatus: true,
+
+        price: true,
+
+        currency: true,
+
+        rentPeriod: true,
+
+        location: true,
+
+        viewCount: true,
+
+        createdAt: true,
+
+        author: { select: { username: true, email: true, isBot: true, city: true } },
+
+        media: { select: { type: true, url: true }, orderBy: { sortOrder: 'asc' }, take: 4 },
 
       },
 

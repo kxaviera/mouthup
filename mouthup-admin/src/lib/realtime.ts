@@ -11,6 +11,7 @@ function socketBaseUrl() {
 export type AdminStats = {
   users: number;
   posts: number;
+  listings: number;
   pendingReports: number;
   messages: number;
   verifiedUsers: number;

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { banUser, getStoredToken, searchUsers, unbanUser, unverifyUser, verifyUser } from '@/lib/api';
+import { accountTypeLabel } from '@/lib/listings';
 
 type UserRow = {
   id: string;
@@ -19,9 +20,13 @@ type UserRow = {
   signupCity: string | null;
   authProvider: string | null;
   isVerified: boolean;
+  city: string | null;
+  accountType: string | null;
+  profession: string | null;
 };
 
 function formatLocation(u: UserRow): string {
+  if (u.city?.trim()) return u.city.trim();
   const parts = [u.signupCity, u.signupRegion, u.signupCountry].filter(Boolean);
   return parts.length > 0 ? parts.join(', ') : '—';
 }
@@ -103,7 +108,7 @@ export default function UsersPage() {
     <AdminShell>
       <h1 className="text-2xl font-bold">Users</h1>
       <p className="mt-1 text-sm text-zinc-500">
-        Ban/unban users and grant verified badges for trusted sellers & service providers.
+        Manage ISZI buyers, sellers, and verified accounts.
       </p>
       <div className="mt-6 flex gap-2">
         <input
@@ -127,8 +132,9 @@ export default function UsersPage() {
           <thead className="border-b border-zinc-800 bg-zinc-950 text-zinc-400">
             <tr>
               <th className="px-4 py-3 font-medium">User</th>
+              <th className="px-4 py-3 font-medium">Type</th>
               <th className="px-4 py-3 font-medium">Verified</th>
-              <th className="px-4 py-3 font-medium">Location</th>
+              <th className="px-4 py-3 font-medium">City</th>
               <th className="px-4 py-3 font-medium">Signed up</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium" />
@@ -143,6 +149,10 @@ export default function UsersPage() {
                   {u.username && u.screenName && u.screenName !== u.username && (
                     <p className="text-xs text-zinc-600">{u.email}</p>
                   )}
+                </td>
+                <td className="px-4 py-3 text-zinc-300">
+                  <p>{accountTypeLabel(u.accountType)}</p>
+                  {u.profession ? <p className="text-xs text-zinc-600">{u.profession}</p> : null}
                 </td>
                 <td className="px-4 py-3">
                   {u.isVerified ? (

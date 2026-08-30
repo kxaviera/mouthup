@@ -1,6 +1,6 @@
-# MouthUp Admin Panel
+# ISZI Admin Panel
 
-Dark-themed admin dashboard for moderating MouthUp.
+Dark-themed admin dashboard for moderating ISZI (MouthUp backend).
 
 ## Run
 

@@ -24,7 +24,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-black text-white">
       <aside className="flex w-56 flex-col border-r border-zinc-800 bg-zinc-950 p-4">
         <div className="mb-8 px-2">
-          <p className="text-lg font-bold tracking-tight">MouthUp</p>
+          <p className="text-lg font-bold tracking-tight">ISZI</p>
           <p className="text-xs text-zinc-500">Admin Panel</p>
         </div>
         <nav className="flex flex-1 flex-col gap-1">

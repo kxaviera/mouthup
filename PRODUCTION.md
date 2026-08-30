@@ -4,7 +4,7 @@ Three projects for production launch:
 
 | Project | Path | Purpose |
 |---------|------|---------|
-| **Flutter App** | `mouthup_flutter/` | User-facing mobile/web app |
+| **Flutter App** | `mouthup_flutter/` | User-facing mobile/web app (ISZI) |
 | **API** | `mouthup-api/` | NestJS backend (PostgreSQL + Redis) |
 | **Admin** | `mouthup-admin/` | Moderation dashboard (Next.js) |
 

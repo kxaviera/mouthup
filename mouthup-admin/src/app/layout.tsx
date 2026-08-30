@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'MouthUp Admin',
-  description: 'Admin panel for MouthUp',
+  title: 'ISZI Admin',
+  description: 'Admin panel for ISZI marketplace',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

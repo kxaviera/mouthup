@@ -14,12 +14,20 @@ echo "==> ISZI go-live (${DOMAIN})"
 echo "    App dir: ${APP_DIR}"
 
 # --- prerequisites ---
-for cmd in node npm pm2 nginx certbot; do
+for cmd in node npm pm2; do
   if ! command -v "${cmd}" >/dev/null 2>&1; then
-    echo "ERROR: ${cmd} not found. Run: DOMAIN=${DOMAIN} bash deploy/setup-vps.sh"
+    echo "ERROR: ${cmd} not found."
     exit 1
   fi
 done
+
+USE_TRAEFIK=false
+if ss -tlnp 2>/dev/null | grep -qE ':80 .*traefik|:443 .*traefik'; then
+  USE_TRAEFIK=true
+elif ! command -v nginx >/dev/null 2>&1; then
+  echo "ERROR: Neither Traefik nor nginx found for public routing."
+  exit 1
+fi
 
 if [[ ! -f mouthup-api/.env ]]; then
   echo "ERROR: mouthup-api/.env missing. Copy deploy/env/api.env.example and fill secrets."
@@ -59,13 +67,12 @@ pm2 start deploy/ecosystem.config.js
 pm2 save
 pm2 startup systemd -u root --hp /root 2>/dev/null | tail -1 | bash || true
 
-# --- nginx ---
-echo "==> Nginx"
+# --- public routing (Traefik or nginx) ---
+echo "==> Public routing"
 if ss -tlnp 2>/dev/null | grep -qE ':80 .*traefik|:443 .*traefik'; then
-  echo "WARNING: Traefik is listening on 80/443. Stop Traefik or configure it to proxy"
-  echo "         api.${DOMAIN} -> 127.0.0.1:3000, admin.${DOMAIN} -> 127.0.0.1:3001"
-  echo "         Skipping nginx install."
-else
+  echo "Traefik detected — wiring routes to PM2 on host"
+  bash deploy/vps-traefik-routes.sh || true
+elif command -v nginx >/dev/null 2>&1; then
   sudo cp deploy/nginx/mouthup.conf /etc/nginx/sites-available/mouthup.conf
   sudo sed -i "s/DOMAIN/${DOMAIN}/g" /etc/nginx/sites-available/mouthup.conf
   sudo ln -sf /etc/nginx/sites-available/mouthup.conf /etc/nginx/sites-enabled/mouthup.conf
@@ -81,6 +88,9 @@ else
       echo "  sudo certbot --nginx -d api.${DOMAIN} -d admin.${DOMAIN} -d app.${DOMAIN}"
     }
   fi
+else
+  echo "ERROR: No Traefik or nginx found. Run: bash deploy/vps-traefik-routes.sh"
+  exit 1
 fi
 
 # --- Flutter web (static) ---

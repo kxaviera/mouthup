@@ -1,0 +1,79 @@
+# Traefik dynamic routes — PM2 on host (/var/www/mouthup).
+# Install on VPS:
+#   sudo cp deploy/traefik/mouthup.yml /docker/traefik/dynamic/mouthup.yml
+#   docker restart traefik   # or: cd /docker/traefik && docker compose restart
+#
+# Host gateway from Traefik container (Linux Docker bridge):
+#   172.17.0.1 = host machine where PM2 listens on 3000/3001
+
+http:
+  routers:
+    mouthup-api-http:
+      rule: Host(`api.ogmario64.fun`)
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-https
+      service: mouthup-api
+
+    mouthup-api:
+      rule: Host(`api.ogmario64.fun`)
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: mouthup-api
+
+    mouthup-admin-http:
+      rule: Host(`admin.ogmario64.fun`)
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-https
+      service: mouthup-admin
+
+    mouthup-admin:
+      rule: Host(`admin.ogmario64.fun`)
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: mouthup-admin
+
+    mouthup-app-http:
+      rule: Host(`app.ogmario64.fun`)
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-https
+      service: mouthup-app
+
+    mouthup-app:
+      rule: Host(`app.ogmario64.fun`)
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: mouthup-app
+
+  services:
+    mouthup-api:
+      loadBalancer:
+        servers:
+          - url: http://172.17.0.1:3000
+
+    mouthup-admin:
+      loadBalancer:
+        servers:
+          - url: http://172.17.0.1:3001
+
+    mouthup-app:
+      loadBalancer:
+        servers:
+          - url: http://172.17.0.1:8080
+
+  middlewares:
+    redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true

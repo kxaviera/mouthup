@@ -26,6 +26,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: '3001',
+        NEXT_PUBLIC_API_URL: 'https://api.ogmario64.fun/api/v1',
       },
       max_memory_restart: '512M',
       error_file: './logs/admin-error.log',

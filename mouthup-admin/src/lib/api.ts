@@ -1,6 +1,4 @@
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000/api/v1');
+import { getApiUrl } from './api-url';
 
 export interface AuthTokens {
   accessToken: string;
@@ -24,9 +22,10 @@ function storeTokens(accessToken: string, refreshToken: string) {
 
 async function refreshAccessToken(): Promise<string | null> {
   const refresh = getRefreshToken();
-  if (!refresh || !API_URL) return null;
+  const apiUrl = getApiUrl();
+  if (!refresh || !apiUrl) return null;
   try {
-    const res = await fetch(`${API_URL}/auth/refresh`, {
+    const res = await fetch(`${apiUrl}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken: refresh }),
@@ -45,14 +44,15 @@ export async function apiFetch<T>(
   options: RequestInit = {},
   retried = false,
 ): Promise<T> {
-  if (!API_URL) {
+  const apiUrl = getApiUrl();
+  if (!apiUrl) {
     throw new Error('NEXT_PUBLIC_API_URL is not configured');
   }
 
   const token = getStoredToken();
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, {
+    res = await fetch(`${apiUrl}${path}`, {
       ...options,
       cache: 'no-store',
       headers: {
@@ -62,7 +62,7 @@ export async function apiFetch<T>(
       },
     });
   } catch {
-    throw new Error(`Cannot reach API at ${API_URL}`);
+    throw new Error(`Cannot reach API at ${apiUrl}`);
   }
 
   if (res.status === 401 && !retried && path !== '/auth/login') {

@@ -1,12 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000/api/v1');
-
-function socketBaseUrl() {
-  return (API_URL ?? '').replace(/\/api\/v1\/?$/, '');
-}
+import { getSocketBaseUrl } from './api-url';
 
 export type AdminStats = {
   users: number;
@@ -30,7 +23,7 @@ export function connectAdminRealtime(
 ) {
   disconnectAdminRealtime();
 
-  socket = io(`${socketBaseUrl()}/realtime`, {
+  socket = io(`${getSocketBaseUrl()}/realtime`, {
     transports: ['websocket'],
     auth: { token },
     reconnection: true,

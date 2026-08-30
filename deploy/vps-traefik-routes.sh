@@ -21,8 +21,8 @@ if [[ -z "${TRAEFIK_CONTAINER}" ]]; then
 fi
 
 TRAEFIK_NETWORK=$(docker inspect "${TRAEFIK_CONTAINER}" --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' | tr ' ' '\n' | grep -i traefik | head -1 || true)
-if [[ -z "${TRAEFIK_NETWORK}" ]]; then
-  TRAEFIK_NETWORK=$(docker inspect "${TRAEFIK_CONTAINER}" --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' | awk '{print $1}')
+if [[ -z "${TRAEFIK_NETWORK}" ]] || [[ "${TRAEFIK_NETWORK}" == "host" ]]; then
+  TRAEFIK_NETWORK="mouthup-proxy (bridge — Traefik uses host network)"
 fi
 echo "Traefik container: ${TRAEFIK_CONTAINER}"
 echo "Traefik network:   ${TRAEFIK_NETWORK}"
@@ -53,8 +53,8 @@ echo "==> Start nginx proxy containers (Traefik Docker provider)"
 WORK="${PROXY_DIR}/.runtime"
 mkdir -p "${WORK}"
 cp "${PROXY_DIR}/nginx-api.conf" "${PROXY_DIR}/nginx-admin.conf" "${PROXY_DIR}/nginx-app.conf" "${WORK}/"
-sed "s/DOMAIN/${DOMAIN}/g; s/TRAEFIK_NETWORK/${TRAEFIK_NETWORK}/g" \
-  "${PROXY_DIR}/pm2-proxy-compose.yml" > "${WORK}/docker-compose.yml"
+cp "${PROXY_DIR}/pm2-proxy-compose.yml" "${WORK}/docker-compose.yml"
+sed -i "s/DOMAIN/${DOMAIN}/g" "${WORK}/docker-compose.yml"
 cd "${WORK}"
 docker compose pull
 docker compose up -d --force-recreate

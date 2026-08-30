@@ -2,7 +2,7 @@
 # First-time VPS setup for Ubuntu 24.04
 set -euo pipefail
 
-DOMAIN="${DOMAIN:-mouthup.app}"
+DOMAIN="${DOMAIN:-ogmario64.fun}"
 APP_DIR="${APP_DIR:-/var/www/mouthup}"
 
 echo "==> MouthUp VPS setup (${DOMAIN})"

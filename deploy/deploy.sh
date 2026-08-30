@@ -2,7 +2,7 @@
 # MouthUp production deploy — run on VPS from repo root (/var/www/mouthup)
 set -euo pipefail
 
-DOMAIN="${DOMAIN:-mouthup.app}"
+DOMAIN="${DOMAIN:-ogmario64.fun}"
 APP_DIR="${APP_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 

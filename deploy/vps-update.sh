@@ -25,7 +25,9 @@ update_service() {
     fi
     cd '${REPO_DIR}'
     git fetch origin '${BRANCH}'
+    # Discard container-local edits (e.g. npm install changing package-lock.json)
     git reset --hard 'origin/${BRANCH}'
+    git clean -fd
     cd '${app_dir}'
     ${build_cmd}
   "
